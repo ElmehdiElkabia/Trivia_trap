@@ -61,7 +61,6 @@ export function LoginPage({ initialMode = "login", initialMessage = "" }: { init
   const [mode, setMode] = useState<Mode>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(initialMode !== "new-password");
   const [message, setMessage] = useState(initialMessage);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -71,26 +70,6 @@ export function LoginPage({ initialMode = "login", initialMessage = "" }: { init
   const requestInFlight = useRef(false);
   const resetToken = useRef("");
   const createsPassword = mode === "register" || mode === "new-password";
-
-  useEffect(() => {
-    if (initialMode === "new-password") return;
-
-    let active = true;
-    apiFetch("/auth/me")
-      .then(response => {
-        if (!active) return;
-        if (response.ok) {
-          router.replace("/dashboard");
-        } else {
-          setCheckingSession(false);
-        }
-      })
-      .catch(() => {
-        if (active) setCheckingSession(false);
-      });
-
-    return () => { active = false; };
-  }, [initialMode, router]);
 
   useEffect(() => {
     if (initialMode !== "new-password") return;
@@ -264,10 +243,6 @@ export function LoginPage({ initialMode = "login", initialMessage = "" }: { init
 
   const heading = mode === "login" ? "Welcome back." : mode === "register" ? "Join the game." : mode === "new-password" ? "Choose a new password." : "Reset your password.";
   const subtitle = mode === "login" ? "Sign in to your account and make your next move." : mode === "register" ? "Create an account. The room is waiting for you." : mode === "new-password" ? "Enter and confirm your new password to get back in the game." : "Enter your email and we’ll send you a reset link.";
-
-  if (checkingSession) {
-    return <main className="grid min-h-svh place-items-center bg-trap-canvas text-foreground" aria-label="Checking session"><LoaderCircle className="size-6 animate-spin" aria-hidden="true" /></main>;
-  }
 
   return (
     <main className="relative isolate min-h-svh overflow-x-hidden bg-trap-canvas text-foreground">
