@@ -35,6 +35,8 @@ import { ErrorState } from "@/components/ui/error-state";
 import type { SessionUser } from "@/lib/websocket/session-user";
 import { InvitationListener } from "@/components/notifications/invitation-listener";
 import { gameErrorPresentation } from "@/lib/game-error";
+import { RoomNotFound } from "@/components/errors/room-not-found";
+import { apiFetch, apiMediaUrl } from "@/lib/api";
 
 interface MockGameFlowState {
   currentPhase: GamePhase;
@@ -94,6 +96,57 @@ export function TriviaTrapGame({ roomCode, roomId, mockState, currentUser }: Tri
   const categoryTimeoutRef = useRef<number | null>(null);
   const categoryRequestedRef = useRef(false);
   const leavingRoomRef = useRef(false);
+  const avatarRequestsRef = useRef(new Set<string>());
+  const [playerAvatars, setPlayerAvatars] = useState<Record<string, string | null>>({});
+  const lobbyPlayers = websocket.lobby?.players;
+
+  useEffect(() => {
+    if (!lobbyPlayers) return;
+
+    const avatarRequests = avatarRequestsRef.current;
+    const pendingPlayers = lobbyPlayers.filter(
+      (player) => !avatarRequests.has(player.id),
+    );
+    if (pendingPlayers.length === 0) return;
+
+    const controller = new AbortController();
+    let settled = false;
+    for (const player of pendingPlayers) avatarRequests.add(player.id);
+
+    void Promise.all(pendingPlayers.map(async (player) => {
+      try {
+        const response = await apiFetch(
+          `/users/${encodeURIComponent(player.username)}`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) throw new Error("Could not load player avatar");
+
+        const profile = await response.json() as { avatar?: string | null };
+        return [player.id, apiMediaUrl(profile.avatar) ?? null] as const;
+      } catch {
+        if (!controller.signal.aborted) avatarRequests.delete(player.id);
+        return null;
+      }
+    })).then((avatars) => {
+      settled = true;
+      if (controller.signal.aborted) return;
+      setPlayerAvatars((current) => {
+        const next = { ...current };
+        for (const avatar of avatars) {
+          if (avatar) next[avatar[0]] = avatar[1];
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      controller.abort();
+      if (!settled) {
+        for (const player of pendingPlayers) avatarRequests.delete(player.id);
+      }
+    };
+  }, [lobbyPlayers]);
+
   const isHost = game.players.some(
     (player) => player.isYou && player.role === "HOST",
   );
@@ -114,7 +167,9 @@ export function TriviaTrapGame({ roomCode, roomId, mockState, currentUser }: Tri
         : activePhase === "VOTING"
           ? websocket.voteSubmittedPlayerIds.includes(player.id) ? "VOTED" : "THINKING"
           : "ONLINE",
-    isYou: player.id === websocket.sessionUser?.id, score: player.score,
+    isYou: player.id === websocket.sessionUser?.id,
+    score: player.score,
+    avatar: playerAvatars[player.id] ?? undefined,
   })) ?? [];
   const serverSettings: GameSettings | null = websocket.lobby ? {
     totalRounds: websocket.lobby.settings.total_rounds, bluffTime: websocket.lobby.settings.bluff_time,
@@ -626,6 +681,10 @@ export function TriviaTrapGame({ roomCode, roomId, mockState, currentUser }: Tri
           />
         );
     }
+  }
+
+  if (roomId && websocket.error?.code === "ROOM_NOT_FOUND") {
+    return <RoomNotFound />;
   }
 
   const showHud = activePhase !== "LOBBY";
