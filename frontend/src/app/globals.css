@@ -6,8 +6,7 @@
     var(--font-jakarta), ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-secondary:
-    var(--font-bowlby), ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+    var(--font-black-ops), ui-sans-serif, system-ui, sans-serif;
   --font-blackops:
     var(--font-black-ops), ui-sans-serif, system-ui, sans-serif;
   --breakpoint-xs: 521px;

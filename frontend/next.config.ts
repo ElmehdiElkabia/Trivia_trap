@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["127.0.0.1"],
+    compiler: {
+    removeConsole: false,
+  },
+  allowedDevOrigins: ["127.0.0.1", "10.14.2.9"],
   async headers() {
     return ["/login", "/register"].map((source) => ({
       source,

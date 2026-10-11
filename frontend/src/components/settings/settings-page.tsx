@@ -99,7 +99,7 @@ export function SettingsPage({
 }) {
   const router = useRouter();
   const [updatedUser, setUpdatedUser] = useState<UserData | null>(null);
-  const displayedUser = updatedUser ?? user;
+  const displayedUser = updatedUser ? { ...updatedUser, avatar: user.avatar } : user;
   const [username, setUsername] = useState(user.username);
   const [accountEmail, setAccountEmail] = useState(email);
   const [savedEmail, setSavedEmail] = useState(email);

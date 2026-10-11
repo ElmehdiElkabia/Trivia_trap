@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Bowlby_One_SC, Black_Ops_One } from "next/font/google";
-
-
+import { Plus_Jakarta_Sans, Black_Ops_One } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -9,18 +7,14 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
   weight: ["400", "500", "600", "700", "800"],
+  preload: false,
 });
 
 const blackOpsOne = Black_Ops_One({
   variable: "--font-black-ops",
   subsets: ["latin"],
   weight: "400",
-});
-
-const bowlbyOneSC = Bowlby_One_SC({
-  subsets: ["latin"],
-  variable: "--font-bowlby",
-  weight: "400",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -32,7 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="en"
-      className={`${plusJakartaSans.variable} ${bowlbyOneSC.variable} ${blackOpsOne.variable} h-full antialiased`}
+      className={`${plusJakartaSans.variable} ${blackOpsOne.variable} h-full antialiased`}
     >
       <head>
         <title>Trivia Trap</title>

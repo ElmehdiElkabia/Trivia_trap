@@ -24,9 +24,9 @@ export default function PrivacyPage() {
 
       <header className="border-b border-white/10 bg-[#111114]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <Link href="/" className="inline-flex items-center gap-2.5 text-sm font-black tracking-wide text-white" aria-label="Trivia Trap home">
-            <span className="grid size-9 place-items-center rounded-xl border border-primary/30 bg-primary/10 text-primary"><Zap className="size-5 fill-current" aria-hidden="true" /></span>
-            TRIVIA <span className="-ml-2 text-primary">TRAP</span>
+          <Link href="/" className="inline-flex items-center gap-2.5 text-sm font-black tracking-wide text-primary sm:text-base" aria-label="Trivia Trap home">
+            <span className="grid size-9 place-items-center rounded-xl border border-primary/30 bg-primary/10 text-primary"><Zap size={20} fill="currentColor" aria-hidden="true" /></span>
+            <span>TRIVIA TRAP</span>
           </Link>
           <Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-trap-text-dim transition-colors hover:text-white"><ArrowLeft className="size-4" aria-hidden="true" /> Back to site</Link>
         </div>

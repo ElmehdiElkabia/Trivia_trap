@@ -158,6 +158,7 @@ async def update_avatar_path(
             )
         user.avatar_url = avatar_path
         await session.commit()
+        await session.refresh(user)
     except Exception as e:
         await session.rollback()
         raise HTTPException(

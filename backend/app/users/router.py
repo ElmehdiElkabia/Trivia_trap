@@ -11,6 +11,7 @@ from .schemas import UserProfile, GameHistoryResponse
 from users.utils import get_user_game_history
 from typing import Literal
 from pathlib import Path
+from uuid import uuid4
 from presence import mark_user_offline, mark_user_online
 from authentication.schemas import validate_username
 
@@ -159,7 +160,8 @@ async def upload_avatar(
                 buffer.write(chunk)
     finally:
         await file.close()
-    await update_avatar_path(db, user.id, f"/uploads/{safe_filename}")
+    # Refresh the browser's image cache without changing the file on disk.
+    await update_avatar_path(db, user.id, f"/uploads/{safe_filename}?v={uuid4().hex}")
     return {
         "status": "success",
         "filename": safe_filename,

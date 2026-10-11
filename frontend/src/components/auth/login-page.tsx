@@ -286,66 +286,66 @@ export function LoginPage({ initialMode = "login", initialMessage = "" }: { init
             >
               <div aria-hidden="true" className="absolute -inset-8 -z-10 rounded-[40px] bg-[radial-gradient(circle_at_top,rgba(255,107,53,.13),transparent_58%)] blur-xl" />
               <Card className="relative overflow-hidden rounded-[28px] border-white/10 bg-trap-panel/95 p-6 shadow-[0_32px_100px_-38px_rgba(0,0,0,.95),0_0_0_1px_rgba(255,255,255,.02)] backdrop-blur-xl sm:p-9">
-              <div aria-hidden="true" className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-              {(mode === "login" || mode === "register") ? (
-                <div className="mb-8 grid grid-cols-2 gap-1 rounded-xl border border-white/5 bg-trap-canvas p-1" role="group" aria-label="Account options">
-                  {(["login", "register"] as const).map(option => <Button key={option} type="button" variant="ghost" size="sm" disabled={pending} aria-pressed={mode === option} onClick={() => changeMode(option)} className={`rounded-lg tracking-normal ${mode === option ? "bg-trap-muted text-white shadow-sm hover:bg-trap-muted" : "text-trap-text-dim"}`}>{option === "login" ? "Sign in" : "Create account"}</Button>)}
-                </div>
-              ) : <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => changeMode("login")} className="mb-5 -ml-3 text-trap-text-dim"><ArrowLeft size={14} /> Back to sign in</Button>}
+                <div aria-hidden="true" className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+                {(mode === "login" || mode === "register") ? (
+                  <div className="mb-8 grid grid-cols-2 gap-1 rounded-xl border border-white/5 bg-trap-canvas p-1" role="group" aria-label="Account options">
+                    {(["login", "register"] as const).map(option => <Button key={option} type="button" variant="ghost" size="sm" disabled={pending} aria-pressed={mode === option} onClick={() => changeMode(option)} className={`rounded-lg tracking-normal ${mode === option ? "bg-trap-muted text-white shadow-sm hover:bg-trap-muted" : "text-trap-text-dim"}`}>{option === "login" ? "Sign in" : "Create account"}</Button>)}
+                  </div>
+                ) : <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => changeMode("login")} className="mb-5 -ml-3 text-trap-text-dim"><ArrowLeft size={14} /> Back to sign in</Button>}
 
-              <AnimatePresence initial={false} mode="wait">
-                <motion.div
-                  key={mode}
-                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                  transition={{ duration: reducedMotion ? 0.01 : 0.22, ease: [0.22, 1, 0.36, 1] }}
-                >
-              <div className="mb-7">
-                <h1 id="auth-heading" className="text-[30px] font-extrabold leading-tight tracking-[-.045em]">{heading}</h1>
-                <p className="mt-2 text-sm leading-6 text-trap-text-dim">{subtitle}</p>
-              </div>
+                <AnimatePresence initial={false} mode="wait">
+                  <motion.div
+                    key={mode}
+                    initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                    transition={{ duration: reducedMotion ? 0.01 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <div className="mb-7">
+                      <h1 id="auth-heading" className="text-[30px] font-extrabold leading-tight tracking-[-.045em]">{heading}</h1>
+                      <p className="mt-2 text-sm leading-6 text-trap-text-dim">{subtitle}</p>
+                    </div>
 
-              {(mode === "login" || mode === "register") && <>
-                <GoogleSignIn disabled={pending} onCredential={handleGoogleCredential} />
-                <div className="my-6 flex items-center gap-4 text-[11px] text-trap-text-dim"><span className="h-px flex-1 bg-border" /> or use your email <span className="h-px flex-1 bg-border" /></div>
-              </>}
+                    {(mode === "login" || mode === "register") && <>
+                      <GoogleSignIn disabled={pending} onCredential={handleGoogleCredential} />
+                      <div className="my-6 flex items-center gap-4 text-[11px] text-trap-text-dim"><span className="h-px flex-1 bg-border" /> or use your email <span className="h-px flex-1 bg-border" /></div>
+                    </>}
 
-              <form onSubmit={handleSubmit} noValidate={mode === "login" || mode === "register"} aria-busy={pending}>
-                <fieldset disabled={pending} className="min-w-0 space-y-4">
-                  {mode === "register" && <div>
-                    <label htmlFor="username" className="mb-2 block text-xs font-bold text-trap-text-soft">Player name</label>
-                    <div className="relative"><Input id="username" name="username" required minLength={3} maxLength={15} autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} placeholder="Your alter ego" className="pl-11" /><Sparkles size={16} className="auth-input-icon" aria-hidden="true" /></div>
-                  </div>}
-                  {mode !== "new-password" && <div>
-                    <label htmlFor="email" className="mb-2 block text-xs font-bold text-trap-text-soft">Email address</label>
-                    <div className="relative"><Input id="email" name="email" type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="pl-11" /><Mail size={16} className="auth-input-icon" aria-hidden="true" /></div>
-                  </div>}
-                  {mode !== "reset" && <div>
-                    <div className="mb-2 flex items-center justify-between gap-3"><label htmlFor="password" className="text-xs font-bold text-trap-text-soft">Password</label>{mode === "login" && <button type="button" onClick={() => changeMode("reset")} className="text-xs font-semibold text-trap-text-dim transition hover:text-trap-primary-soft">Forgot password?</button>}</div>
-                    <div className="relative"><Input id="password" name="password" type={showPassword ? "text" : "password"} required minLength={createsPassword ? 7 : undefined} maxLength={createsPassword ? 128 : undefined} autoComplete={createsPassword ? "new-password" : "current-password"} aria-describedby={createsPassword ? "password-help" : undefined} value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password" className="pl-11 pr-12" /><LockKeyhole size={16} className="auth-input-icon" aria-hidden="true" /><Button type="button" variant="ghost" size="icon-sm" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} className="absolute right-2 top-1/2 -translate-y-1/2 text-trap-text-dim">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</Button></div>
-                    {createsPassword && <p id="password-help" className="mt-2 text-[11px] leading-5 text-trap-text-dim">7–128 characters with uppercase, lowercase, a number and a symbol; no spaces.</p>}
-                  </div>}
-                  {createsPassword && <div>
-                    <label htmlFor="confirm-password" className="mb-2 block text-xs font-bold text-trap-text-soft">Confirm password</label>
-                    <div className="relative"><Input id="confirm-password" name="confirm-password" type={showPassword ? "text" : "password"} required autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="One more time" className="pl-11" /><LockKeyhole size={16} className="auth-input-icon" aria-hidden="true" /></div>
-                  </div>}
-                  {message && <p role="status" aria-live="polite" className={`rounded-xl border px-3 py-2.5 text-sm leading-5 ${message.startsWith("If ") || message.startsWith("Account created") || message.startsWith("Password reset.") ? "border-trap-success/30 bg-trap-success/10 text-trap-success" : "border-trap-danger/30 bg-trap-danger/10 text-[#ffd0c5]"}`}>{message}</p>}
-                  <Button type="submit" disabled={pending} size="lg" className="mt-2 h-[52px] w-full justify-between px-5 text-sm tracking-normal">
-                    {pending ? "Please wait…" : mode === "login" ? "Let’s play" : mode === "register" ? "Create account" : mode === "new-password" ? "Update password" : "Send reset link"}
-                    {pending ? <LoaderCircle size={18} className="motion-safe:animate-spin" aria-hidden="true" /> : <ArrowRight size={18} aria-hidden="true" />}
-                  </Button>
-                </fieldset>
-              </form>
+                    <form onSubmit={handleSubmit} noValidate={mode === "login" || mode === "register"} aria-busy={pending}>
+                      <fieldset disabled={pending} className="min-w-0 space-y-4">
+                        {mode === "register" && <div>
+                          <label htmlFor="username" className="mb-2 block text-xs font-bold text-trap-text-soft">Player name</label>
+                          <div className="relative"><Input id="username" name="username" required minLength={3} maxLength={15} autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} placeholder="Your alter ego" className="pl-11" /><Sparkles size={16} className="auth-input-icon" aria-hidden="true" /></div>
+                        </div>}
+                        {mode !== "new-password" && <div>
+                          <label htmlFor="email" className="mb-2 block text-xs font-bold text-trap-text-soft">Email address</label>
+                          <div className="relative"><Input id="email" name="email" type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="pl-11" /><Mail size={16} className="auth-input-icon" aria-hidden="true" /></div>
+                        </div>}
+                        {mode !== "reset" && <div>
+                          <div className="mb-2 flex items-center justify-between gap-3"><label htmlFor="password" className="text-xs font-bold text-trap-text-soft">Password</label>{mode === "login" && <button type="button" onClick={() => changeMode("reset")} className="text-xs font-semibold text-trap-text-dim transition hover:text-trap-primary-soft">Forgot password?</button>}</div>
+                          <div className="relative"><Input id="password" name="password" type={showPassword ? "text" : "password"} required minLength={createsPassword ? 7 : undefined} maxLength={createsPassword ? 128 : undefined} autoComplete={createsPassword ? "new-password" : "current-password"} aria-describedby={createsPassword ? "password-help" : undefined} value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password" className="pl-11 pr-12" /><LockKeyhole size={16} className="auth-input-icon" aria-hidden="true" /><Button type="button" variant="ghost" size="icon-sm" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} className="absolute right-2 top-1/2 -translate-y-1/2 text-trap-text-dim">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</Button></div>
+                          {createsPassword && <p id="password-help" className="mt-2 text-[11px] leading-5 text-trap-text-dim">7–128 characters with uppercase, lowercase, a number and a symbol; no spaces.</p>}
+                        </div>}
+                        {createsPassword && <div>
+                          <label htmlFor="confirm-password" className="mb-2 block text-xs font-bold text-trap-text-soft">Confirm password</label>
+                          <div className="relative"><Input id="confirm-password" name="confirm-password" type={showPassword ? "text" : "password"} required autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="One more time" className="pl-11" /><LockKeyhole size={16} className="auth-input-icon" aria-hidden="true" /></div>
+                        </div>}
+                        {message && <p role="status" aria-live="polite" className={`rounded-xl border px-3 py-2.5 text-sm leading-5 ${message.startsWith("If ") || message.startsWith("Account created") || message.startsWith("Password reset.") ? "border-trap-success/30 bg-trap-success/10 text-trap-success" : "border-trap-danger/30 bg-trap-danger/10 text-[#ffd0c5]"}`}>{message}</p>}
+                        <Button type="submit" disabled={pending} size="lg" className="mt-2 h-[52px] w-full justify-between px-5 text-sm tracking-normal">
+                          {pending ? "Please wait…" : mode === "login" ? "Let’s play" : mode === "register" ? "Create account" : mode === "new-password" ? "Update password" : "Send reset link"}
+                          {pending ? <LoaderCircle size={18} className="motion-safe:animate-spin" aria-hidden="true" /> : <ArrowRight size={18} aria-hidden="true" />}
+                        </Button>
+                      </fieldset>
+                    </form>
 
-              {mode === "new-password" && <Button type="button" variant="ghost" disabled={pending} onClick={() => changeMode("reset")} className="mt-4 w-full text-trap-text-dim">Request a new reset link</Button>}
+                    {mode === "new-password" && <Button type="button" variant="ghost" disabled={pending} onClick={() => changeMode("reset")} className="mt-4 w-full text-trap-text-dim">Request a new reset link</Button>}
 
-              <div className="mt-7 border-t border-border pt-5 text-center text-xs leading-6 text-trap-text-dim">
-                {mode === "login" ? <>New to the trap? <button type="button" disabled={pending} onClick={() => changeMode("register")} className="font-bold text-trap-primary-soft hover:text-white disabled:opacity-50">Join the fun <span aria-hidden="true">↗</span></button></> : <>Already part of the party? <button type="button" disabled={pending} onClick={() => changeMode("login")} className="font-bold text-trap-primary-soft hover:text-white disabled:opacity-50">Sign in <span aria-hidden="true">↗</span></button></>}
-              </div>
-              <p className="mt-4 text-center text-[11px] leading-5 text-trap-text-dim">See how Trivia Trap uses your data in our <Link href="/privacy" className="font-semibold text-trap-primary-soft underline underline-offset-2 hover:text-white">Privacy Policy</Link>.</p>
-                </motion.div>
-              </AnimatePresence>
+                    <div className="mt-7 border-t border-border pt-5 text-center text-xs leading-6 text-trap-text-dim">
+                      {mode === "login" ? <>New to the trap? <button type="button" disabled={pending} onClick={() => changeMode("register")} className="font-bold text-trap-primary-soft hover:text-white disabled:opacity-50">Join the fun <span aria-hidden="true">↗</span></button></> : <>Already part of the party? <button type="button" disabled={pending} onClick={() => changeMode("login")} className="font-bold text-trap-primary-soft hover:text-white disabled:opacity-50">Sign in <span aria-hidden="true">↗</span></button></>}
+                    </div>
+                    <p className="mt-4 text-center text-[11px] leading-5 text-trap-text-dim">See how Trivia Trap uses your data in our <Link href="/privacy" className="font-semibold text-trap-primary-soft underline underline-offset-2 hover:text-white">Privacy Policy</Link>.</p>
+                  </motion.div>
+                </AnimatePresence>
               </Card>
             </motion.div>
           </motion.section>
