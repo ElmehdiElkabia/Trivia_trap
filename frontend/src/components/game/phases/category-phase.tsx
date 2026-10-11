@@ -34,6 +34,39 @@ const supportedCategories: Category[] = [
   "languages",
 ];
 
+const selectionAnimations = ["zoom", "bounce", "slide", "ripple", "overshoot"] as const;
+type SelectionAnimation = (typeof selectionAnimations)[number];
+
+function randomSelectionAnimation(): SelectionAnimation {
+  return selectionAnimations[Math.floor(Math.random() * selectionAnimations.length)];
+}
+
+const selectedMotion = {
+  zoom: {
+    animate: { scale: [1, 1.09, 1.04], y: [0, -2, -4], rotate: 0 },
+    transition: { duration: 0.34, times: [0, 0.48, 1] },
+  },
+  bounce: {
+    animate: { scale: [1, 1.06, 1.025, 1.04], y: [0, -9, 1, -4], rotate: [0, -1.5, 0.7, 0] },
+    transition: { duration: 0.5, times: [0, 0.4, 0.72, 1] },
+  },
+  slide: {
+    animate: { scale: [1, 1.025, 1.04], y: [7, -7, -4], rotate: 0 },
+    transition: { duration: 0.42, times: [0, 0.62, 1] },
+  },
+  ripple: {
+    animate: { scale: [1, 1.055, 1.04], y: [0, -4, -4], rotate: 0 },
+    transition: { duration: 0.38, times: [0, 0.55, 1] },
+  },
+  overshoot: {
+    animate: { scale: [1, 1.08, 1.025, 1.04], y: [0, -5, -3, -4], rotate: 0 },
+    transition: { duration: 0.48, times: [0, 0.42, 0.72, 1] },
+  },
+} satisfies Record<SelectionAnimation, {
+  animate: { scale: number[]; y: number[]; rotate: number | number[] };
+  transition: { duration: number; times: number[] };
+}>;
+
 export interface CategoryOption {
   id: number;
   name: string;
@@ -66,8 +99,12 @@ export function CategoryPhase({
   language = "en",
 }: CategoryPhaseProps) {
   const [selectedKey, setSelectedKey] = useState<string | number | null>(null);
+  const [selectionAnimation, setSelectionAnimation] = useState<SelectionAnimation>(
+    randomSelectionAnimation,
+  );
   const isLocked = selectedCategory !== null || selectedKey !== null;
   const reducedMotion = useReducedMotion();
+
   const displayedCategories = categories?.length
     ? categories.map((option) => ({
         key: option.id,
@@ -116,25 +153,36 @@ export function CategoryPhase({
         >
           {displayedCategories.map(({ key, category, label, imageUrl, option }) => {
             const selected = selectedKey === key || selectedCategory === category;
+            const selectedAnimation = selectedMotion[selectionAnimation];
             return (
               <StaggerItem key={key}>
                 <motion.div
                   dir={language === "ar" ? "rtl" : "ltr"}
                   data-category-card={category}
-                  animate={reducedMotion ? { opacity: selectedCategory && !selected ? 0.55 : 1 } : {
-                    opacity: selectedCategory && !selected ? 0.45 : 1,
-                    scale: selected ? 1.04 : selectedCategory ? 0.97 : 1,
-                    y: selected ? -4 : 0,
-                  }}
-                  transition={gameSpring}
+                  animate={reducedMotion
+                    ? { opacity: selectedCategory && !selected ? 0.55 : 1 }
+                    : selected
+                      ? {
+                          opacity: 1,
+                          ...selectedAnimation.animate,
+                        }
+                      : {
+                          opacity: selectedCategory && !selected ? 0.45 : 1,
+                          scale: selectedCategory ? 0.97 : 1,
+                          y: 0,
+                          rotate: 0,
+                        }}
+                  transition={selected
+                    ? selectedAnimation.transition
+                    : gameSpring}
                   className="relative"
                 >
                   {selected && !reducedMotion ? (
                     <motion.span
-                      className="pointer-events-none absolute inset-2 rounded-2xl border border-primary/40"
-                      initial={{ opacity: 0.7, scale: 0.9 }}
-                      animate={{ opacity: 0, scale: 1.2 }}
-                      transition={{ duration: 0.38 }}
+                      className={`pointer-events-none absolute rounded-2xl border ${selectionAnimation === "ripple" ? "inset-0 border-accent/70 shadow-[0_0_18px_rgba(247,201,72,0.28)]" : "inset-2 border-primary/40"}`}
+                      initial={{ opacity: 0.75, scale: selectionAnimation === "ripple" ? 0.92 : 0.96 }}
+                      animate={{ opacity: 0, scale: selectionAnimation === "ripple" ? 1.18 : 1.1 }}
+                      transition={{ duration: selectionAnimation === "ripple" ? 0.52 : 0.36, ease: "easeOut" }}
                     />
                   ) : null}
                   <CategoryCard
@@ -146,6 +194,9 @@ export function CategoryPhase({
                     variant="interactive"
                     onSelect={() => {
                       if (!canChoose) return;
+                      if (!reducedMotion) {
+                        setSelectionAnimation(randomSelectionAnimation());
+                      }
                       setSelectedKey(key);
                       captureCategoryCard(document.querySelector(`[data-category-card="${category}"]`), Boolean(reducedMotion));
                       if (option && onSelectCategoryOption) {
