@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import type { UserData } from "@/types/userData";
 
 const nav = [
   { label: "How it works", href: "#how-it-works" },
@@ -202,7 +203,9 @@ function PhaseCard({
   );
 }
 
-export default function LandingPage() {
+type LandingUser = Pick<UserData, "username" | "avatar">;
+
+export default function LandingPage({ user }: { user: LandingUser | null }) {
   const reducedMotion = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, {
@@ -242,7 +245,9 @@ export default function LandingPage() {
           </nav>
           <div className="hidden gap-2 sm:flex">
             <Button asChild className="min-h-9 px-4 " variant="outline">
-              <Link href="/join">Join room</Link>
+              <Link href={user ? "/dashboard" : "/join"}>
+                {user ? "Dashboard" : "Join room"}
+              </Link>
             </Button>
             <Button asChild className="min-h-9 px-4 " variant="flame">
               <Link href="/create-room">
@@ -276,8 +281,11 @@ export default function LandingPage() {
               variant="outline"
               className="text-left text-sm font-display uppercase "
             >
-              <Link href="/join" onClick={() => setMobileMenu(false)}>
-                Join room
+              <Link
+                href={user ? "/dashboard" : "/join"}
+                onClick={() => setMobileMenu(false)}
+              >
+                {user ? "Dashboard" : "Join room"}
               </Link>
             </Button>
             <Button
