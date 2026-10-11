@@ -19,10 +19,19 @@ export default async function SettingsRoute() {
     if (!account) redirect(loginPathFor("/settings"));
   } catch (error) {
     if (error instanceof UserApiError) {
-      if (error.status === 401 || error.status === 403) redirect(loginPathFor("/settings"));
-      return <DashboardShell><ProfileLoadError status={error.status} /></DashboardShell>;
+      if (error.status === 401 || error.status === 403)
+        redirect(loginPathFor("/settings"));
+      return (
+        <DashboardShell>
+          <ProfileLoadError status={error.status} />
+        </DashboardShell>
+      );
     }
     throw error;
   }
-  return <DashboardShell user={user}><SettingsPage user={user} email={account.email} /></DashboardShell>;
+  return (
+    <DashboardShell user={user}>
+      <SettingsPage user={user} email={account.email} />
+    </DashboardShell>
+  );
 }
