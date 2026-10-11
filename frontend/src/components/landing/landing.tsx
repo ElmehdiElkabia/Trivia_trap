@@ -568,6 +568,7 @@ export default function LandingPage() {
                         <a href="#gameplay">Gameplay</a>
                         <a href="#features">Features</a>
                         <a href="#lobby">Lobby</a>
+                        <Link href="/privacy">Privacy Policy</Link>
                     </div>
                     <p className="text-xs text-[#8f878b]">
                         © {new Date().getFullYear()} Trivia Trap. All rights reserved.

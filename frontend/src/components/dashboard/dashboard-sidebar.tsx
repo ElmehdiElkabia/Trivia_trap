@@ -203,6 +203,7 @@ export function DashboardSidebar({
           </Button>
         </div>
         {logoutError && <p role="alert" className="px-3 pt-2 text-xs text-trap-danger">{logoutError}</p>}
+        <Link href="/privacy" onClick={onNavigate} className="mt-3 block px-3 text-[11px] font-semibold text-[#8f8f99] transition-colors hover:text-white">Privacy Policy</Link>
       </div>
     </aside>
   );

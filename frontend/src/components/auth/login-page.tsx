@@ -343,6 +343,7 @@ export function LoginPage({ initialMode = "login", initialMessage = "" }: { init
               <div className="mt-7 border-t border-border pt-5 text-center text-xs leading-6 text-trap-text-dim">
                 {mode === "login" ? <>New to the trap? <button type="button" disabled={pending} onClick={() => changeMode("register")} className="font-bold text-trap-primary-soft hover:text-white disabled:opacity-50">Join the fun <span aria-hidden="true">↗</span></button></> : <>Already part of the party? <button type="button" disabled={pending} onClick={() => changeMode("login")} className="font-bold text-trap-primary-soft hover:text-white disabled:opacity-50">Sign in <span aria-hidden="true">↗</span></button></>}
               </div>
+              <p className="mt-4 text-center text-[11px] leading-5 text-trap-text-dim">See how Trivia Trap uses your data in our <Link href="/privacy" className="font-semibold text-trap-primary-soft underline underline-offset-2 hover:text-white">Privacy Policy</Link>.</p>
                 </motion.div>
               </AnimatePresence>
               </Card>
