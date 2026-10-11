@@ -260,9 +260,9 @@ export function LoginPage({ initialMode = "login", initialMessage = "" }: { init
           transition={{ duration: reducedMotion ? 0.01 : 0.45 }}
           className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-[1360px] items-center justify-between gap-4 px-5 py-6 sm:px-10 sm:py-8 lg:px-16"
         >
-          <Link href="/" className="inline-flex items-center gap-2.5 text-sm font-black tracking-wide sm:text-base" aria-label="Trivia Trap home">
+          <Link href="/" className="inline-flex items-center gap-2.5 text-sm font-black tracking-wide text-primary sm:text-base" aria-label="Trivia Trap home">
             <span className="grid size-9 place-items-center rounded-xl border border-primary/30 bg-primary/10 text-primary"><Zap size={20} fill="currentColor" aria-hidden="true" /></span>
-            TRIVIA <span className="-ml-1 text-primary">TRAP</span>
+            <span>TRIVIA TRAP</span>
           </Link>
           <Button asChild variant="ghost" size="sm" className="gap-2 text-trap-text-dim"><Link href="/"><ArrowLeft size={14} /> Back to home</Link></Button>
         </motion.header>
