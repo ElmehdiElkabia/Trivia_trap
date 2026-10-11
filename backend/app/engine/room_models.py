@@ -39,8 +39,8 @@ class PlayerInfo(BaseModel, arbitrary_types_allowed=True):
 
 class RoomSettings(BaseModel):
     total_rounds: Annotated[int, Field(ge=1, description="At least one round")] = 10
-    bluff_time: Annotated[int, Field(ge=10, description="Time in seconds to provide answer")] = 20
-    vote_time: Annotated[int, Field(ge=10, description="Time in seconds to vote for the correct answer")] = 15
+    bluff_time: Annotated[int, Field(ge=10, description="Time in seconds to provide answer")] = 60
+    vote_time: Annotated[int, Field(ge=10, description="Time in seconds to vote for the correct answer")] = 60
     max_players: Annotated[int, Field(ge=2, description="Maximum number of players in the room")] = 10
     language: Annotated[Literal["en", "ar"], Field(description="Language code for the game questions")] = "en"
 

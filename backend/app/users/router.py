@@ -1,15 +1,18 @@
 from fastapi import APIRouter, Depends, Query, File, Form, UploadFile, HTTPException, status
+from pydantic import EmailStr
 from dataProcessing.database import get_db
 from authentication.current_user import get_current_user
 from dataProcessing.models import User
-from sqlalchemy.orm import Session
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
-from users.utils import build_user_profile, update_user_profile
+from users.utils import build_user_profile, update_avatar_path
 from .schemas import UserProfile, GameHistoryResponse
 from users.utils import get_user_game_history
 from typing import Literal
 from pathlib import Path
 from presence import mark_user_offline, mark_user_online
+from authentication.schemas import validate_username
 
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(get_current_user)])
@@ -21,7 +24,7 @@ def validate_language(language: str = Query('en', min_length=2, max_length=2)) -
     return language
 
 @router.get("/me")
-async def get_profile(db: Annotated[Session, Depends(get_db)],
+async def get_profile(db: Annotated[AsyncSession, Depends(get_db)],
                     current_user: Annotated[User, Depends(get_current_user)],
                     language: Annotated[str, Depends(validate_language)]) -> UserProfile:
     return await build_user_profile(
@@ -30,10 +33,53 @@ async def get_profile(db: Annotated[Session, Depends(get_db)],
             language=language
         )
 
+@router.put("/me")
+async def update_profile(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    username: Annotated[str, Form(min_length=1, max_length=15)],
+    email: Annotated[EmailStr, Form(min_length=5, max_length=30)],
+) -> UserProfile:
+    """
+        Update the current user's profile information.
+        username and email
+    """
+
+    try:
+        validate_username(username)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    existing_user = await db.scalar(
+        select(User).where(
+            or_(User.username == username, User.email == email),
+            User.id != current_user.id,
+        )
+    )
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email is already taken."
+        )
+
+    current_user.username = username
+    current_user.email = email
+    await db.commit()
+    await db.refresh(current_user)
+    return await build_user_profile(
+        db,
+        user_id=current_user.id,
+        language='en'
+    )
+
 
 @router.get("/me/history", response_model=GameHistoryResponse)
 async def get_my_game_history(
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -61,7 +107,7 @@ async def clear_my_presence(
 
 @router.get("/{username}")
 async def get_user_profile(username: str,
-                           db: Annotated[Session, Depends(get_db)],
+                           db: Annotated[AsyncSession, Depends(get_db)],
                            language: Annotated[str, Depends(validate_language)]) -> UserProfile:
     return await build_user_profile(
             db,
@@ -79,12 +125,11 @@ ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 FILE_EXTENSIONS = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 
 @router.post("/me/upload")
-async def upload_profile(
-    db: Annotated[Session, Depends(get_db)],
+async def upload_avatar(
+    db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
-    username: str = Form(...),
     file: UploadFile = File(...),
-):
+)-> dict:
     """
         Upload a profile avatar for the current user.
         stores the file in the 'uploads' directory with a safe filename: {user_id}_avatar.{extension}.
@@ -114,10 +159,9 @@ async def upload_profile(
                 buffer.write(chunk)
     finally:
         await file.close()
-    await update_user_profile(db, user.id, f"/uploads/{safe_filename}", username)
+    await update_avatar_path(db, user.id, f"/uploads/{safe_filename}")
     return {
         "status": "success",
-        "username": username,
         "filename": safe_filename,
         "size_bytes": file_size
     }

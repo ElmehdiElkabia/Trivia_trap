@@ -1,7 +1,9 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from typing import Annotated, Literal
 from uuid import UUID
+
+from authentication.schemas import validate_username
 
 
 class UserStatistics(BaseModel):
@@ -66,3 +68,7 @@ class GameHistoryResponse(BaseModel):
     limit: int = Field(ge=1)
     offset: int = Field(ge=0)
     summary: GameHistorySummary
+
+class UserProfileUpdateRequest(BaseModel):
+    username: Annotated[str, validate_username]
+    email: Annotated[EmailStr, Field(min_length=5, max_length=50)]

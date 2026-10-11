@@ -1,6 +1,5 @@
 from dataProcessing.models import User
 from authentication.repository import find_user_by_username
-from authentication.schemas import validate_username
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, case, exists
 from sqlalchemy.orm import aliased, selectinload
@@ -142,11 +141,10 @@ async def build_user_profile(session: Annotated[Session, Depends(get_db)],
     )
 
 
-async def update_user_profile(
+async def update_avatar_path(
         session: Annotated[Session, Depends(get_db)],
         user_id: int,
-        avatar_url: str,
-        username: str
+        avatar_path: str,
     ) -> None:
     """
         Updates the avatar URL of a user in the database.
@@ -158,8 +156,7 @@ async def update_user_profile(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found",
             )
-        user.avatar_url = avatar_url
-        user.username = validate_username(username)
+        user.avatar_url = avatar_path
         await session.commit()
     except Exception as e:
         await session.rollback()

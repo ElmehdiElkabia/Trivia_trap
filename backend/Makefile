@@ -9,7 +9,6 @@ help:
 install: $(VENV)
 
 run: $(VENV)
-	@bash scripts/bootstrap_local_db.sh
 	@uv run --env-file .env fastapi dev app/main.py --port 8000
 
 test:
