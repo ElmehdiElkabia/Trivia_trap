@@ -13,6 +13,7 @@ type GoogleIdentity = {
     callback: (response: { credential: string }) => void;
     ux_mode: "popup";
     auto_select: boolean;
+    use_fedcm_for_button: boolean;
   }) => void;
   renderButton: (element: HTMLElement, options: {
     theme: "outline";
@@ -49,6 +50,7 @@ export function GoogleSignIn({ disabled, onCredential }: {
         callback: ({ credential }) => activeCredentialHandler?.(credential),
         ux_mode: "popup",
         auto_select: false,
+        use_fedcm_for_button: true,
       });
       initialized = true;
     }
