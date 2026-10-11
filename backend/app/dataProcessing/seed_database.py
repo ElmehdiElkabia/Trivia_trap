@@ -489,7 +489,7 @@ async def seed_mock_user_data(
             continue
         started_at = joined_at + timedelta(days=game_number + 2)
         game = Game(
-            id=game_id, host_user_id=demo.id, language_code="en",
+            id=game_id, host_user_id=demo.id,
             total_rounds=2 * len(category_id_map), started_at=started_at,
             finished_at=started_at + timedelta(minutes=15),
             player_results=[],
@@ -498,7 +498,6 @@ async def seed_mock_user_data(
             rank = (player_number + game_number) % len(users) + 1
             game.player_results.append(GamePlayerResult(
                 user_id=user.id, final_rank=rank, final_score=(4 - rank) * 400,
-                bluff_votes_received=4 - rank,
                 category_results=[
                     GamePlayerCategoryResult(
                         category_id=category_id, questions_played=2,
@@ -513,14 +512,10 @@ async def seed_mock_user_data(
     mock_achievements = (
         {
             "code": "first_game",
-            "description": "Play your first game",
-            "img": "/images/achievements/first_game.png",
             "unlocked": False,
         },
         {
             "code": "first_win",
-            "description": "Win your first game",
-            "img": "/images/achievements/first_win.png",
             "unlocked": True,
         },
     )
@@ -530,13 +525,9 @@ async def seed_mock_user_data(
         if existing is None:
             session.add(UserAchievement(
                 user_id=demo.id, achievement_code=code,
-                description=achievement["description"],
-                img=achievement["img"],
                 unlocked=achievement["unlocked"],
             ))
         else:
-            existing.description = achievement["description"]
-            existing.img = achievement["img"]
             existing.unlocked = achievement["unlocked"]
     await session.flush()
     return demo

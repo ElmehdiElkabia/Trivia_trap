@@ -42,12 +42,11 @@ async def save_unlocked_achievements(unlocks: dict[int, list[str]]) -> dict[int,
         if type(user_id) is not int:
             raise ValueError("Achievement user IDs must come from authenticated database users")
         for code in dict.fromkeys(codes):
-            description, img = ACHIEVEMENT_DEFINITIONS[code]
+            if code not in ACHIEVEMENT_DEFINITIONS:
+                raise KeyError(code)
             values.append({
                 "user_id": user_id,
                 "achievement_code": code,
-                "description": description,
-                "img": img,
                 "unlocked": True,
             })
     if not values:
@@ -58,8 +57,6 @@ async def save_unlocked_achievements(unlocks: dict[int, list[str]]) -> dict[int,
         index_elements=[UserAchievement.user_id, UserAchievement.achievement_code],
         set_={
             "unlocked": True,
-            "description": statement.excluded.description,
-            "img": statement.excluded.img,
         },
         where=UserAchievement.unlocked.is_(False),
     ).returning(UserAchievement.user_id, UserAchievement.achievement_code)

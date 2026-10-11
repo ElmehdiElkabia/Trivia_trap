@@ -259,10 +259,6 @@ class Game(Base):
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    language_code: Mapped[str] = mapped_column(
-        String(5),
-        nullable=False,
-    )
     total_rounds: Mapped[int] = mapped_column(
         nullable=False,
     )
@@ -298,10 +294,6 @@ class GamePlayerResult(Base):
             "final_rank >= 1",
             name="check_game_player_result_rank",
         ),
-        CheckConstraint(
-            "bluff_votes_received >= 0",
-            name="check_game_player_result_bluff_votes",
-        ),
         Index(
             "ix_game_player_results_user_id",
             "user_id",
@@ -322,10 +314,6 @@ class GamePlayerResult(Base):
     )
     final_rank: Mapped[int] = mapped_column(
         nullable=False,
-    )
-    bluff_votes_received: Mapped[int] = mapped_column(
-        nullable=False,
-        server_default=text("0"),
     )
     game: Mapped["Game"] = relationship(
         back_populates="player_results",
@@ -491,13 +479,6 @@ class UserAchievement(Base):
     achievement_code: Mapped[str] = mapped_column(
         String(50),
         primary_key=True,
-    )
-    description: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-    )
-    img: Mapped[str] = mapped_column(
-        String(50),
     )
     unlocked: Mapped[bool] = mapped_column(
         Boolean,

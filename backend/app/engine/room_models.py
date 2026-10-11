@@ -49,6 +49,7 @@ class RoomMetaData(BaseModel, arbitrary_types_allowed=True):
     settings: RoomSettings
     phase: Annotated[RoomPhase, Field(description="Access to the room phase state machine by phase.current_state")] = Field(default_factory=RoomPhase)
     timer_task: Annotated[asyncio.Task | None, Field(description="Timer task to trigger next phase when timeout")] = None
+    phase_lock: asyncio.Lock = Field(default_factory=asyncio.Lock, exclude=True)
     phase_payload: dict | None = None
     phase_deadline: float | None = None
     current_round: int = 1
@@ -64,7 +65,6 @@ class RoomMetaData(BaseModel, arbitrary_types_allowed=True):
     achievement_state: dict[str, dict] = Field(default_factory=new_achievement_state)
     game_id: UUID | None = None
     game_started_at: datetime | None = None
-    bluff_votes_received: dict[str, int] = Field(default_factory=dict)
     game_results_saved: bool = False
     game_results_saving: bool = False
 

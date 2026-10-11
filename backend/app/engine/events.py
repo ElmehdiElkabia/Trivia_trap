@@ -2,6 +2,7 @@ from __future__ import annotations # to treat type hints as strings to avoid cir
 from fastapi import WebSocket
 from .room_models import PlayerInfo, RoomMetaData, RoomSettings, Room, RoomPhase
 from pydantic import Field
+from statemachine import State
 from typing import TYPE_CHECKING
 from dataProcessing.ingestion import ( validate_bluff_answer, build_voting_choices, validate_vote, calculate_results ) # import demo functions until we have a proper data processing module
 from dataProcessing.achievement import (
@@ -61,19 +62,35 @@ async def sync_current_phase(manager: RoomManager, room_id: str, player_id: str)
             )
 
 
-async def phase_timer(manager: RoomManager, context: Context, duration: int):
+async def phase_timer(manager: RoomManager, context: Context, deadline: float, expected_phase: State):
     """
-        Transition to the next phase after a delay.
+        Advance this room only if this timer still owns the expected phase.
     """
     try:
-        await asyncio.sleep(duration)
+        await asyncio.sleep(max(0, deadline - monotonic()))
         room = manager.rooms.get(context.room_id)
-        if room is None or room.meta_data.host_id != context.user_id:
+        if room is None:
             return
-        await to_next_phase(manager, context)
+        async with room.meta_data.phase_lock:
+            if (
+                manager.rooms.get(context.room_id) is not room
+                or room.meta_data.timer_task is not asyncio.current_task()
+                or room.meta_data.phase.current_state != expected_phase
+            ):
+                return
+            await to_next_phase(manager, context)
     except asyncio.CancelledError:
         # Task was canceled early (all players submitted before deadline).
         pass
+
+
+def start_phase_timer(manager: RoomManager, context: Context, room: Room, expected_phase: State):
+    deadline = room.meta_data.phase_deadline
+    if deadline is None:
+        return
+    room.meta_data.timer_task = asyncio.create_task(phase_timer(
+        manager, context, deadline, expected_phase,
+    ))
 
 
 def join_room(rooms: dict, ws: WebSocket, room_id: str, player_id: str, name: str, db_user_id: int):
@@ -152,7 +169,7 @@ async def get_categories(manager: RoomManager, context: Context):
             "categories": categories
             }
         }, context.room_id)
-    room.meta_data.timer_task = asyncio.create_task(phase_timer(manager, context, room.meta_data.settings.vote_time))
+    start_phase_timer(manager, context, room, RoomPhase.CATEGORY)
 
 
 
@@ -170,6 +187,7 @@ async def get_question(manager: RoomManager, context: Context):
             and not room.meta_data.timer_task.done()
         ):
             room.meta_data.timer_task.cancel()
+        room.meta_data.timer_task = None
         room.meta_data.phase.cycle()
     category = context.data.get("category")
     if category is None:
@@ -195,7 +213,7 @@ async def get_question(manager: RoomManager, context: Context):
             "duration": room.meta_data.settings.bluff_time
             }
         }, context.room_id)
-    room.meta_data.timer_task = asyncio.create_task(phase_timer(manager, context, room.meta_data.settings.bluff_time))
+    start_phase_timer(manager, context, room, RoomPhase.QUESTION)
 
 
 
@@ -234,7 +252,7 @@ async def get_vote_choices(manager: RoomManager, context: Context):
             "choices": public_choices
             }
         }, context.room_id)
-    room.meta_data.timer_task = asyncio.create_task(phase_timer(manager, context, room.meta_data.settings.vote_time))
+    start_phase_timer(manager, context, room, RoomPhase.VOTE)
 
 
 
@@ -248,11 +266,6 @@ async def reveal_results(manager: RoomManager, context: Context):
         players=room.players,
         voting_choices=room.meta_data.voting_choices,
     )
-    for player_id, stats in player_stats.items():
-        room.meta_data.bluff_votes_received[player_id] = (
-            room.meta_data.bluff_votes_received.get(player_id, 0)
-            + stats["bluff_votes_received"]
-        )
     updated_state, newly_unlocked = process_round_achievements(
         player_stats,
         choices_by_id,
@@ -297,7 +310,6 @@ async def podium(manager: RoomManager, context: Context):
                 await save_game_results(
                     game_id=room.meta_data.game_id,
                     host_user_id=room.players[room.meta_data.host_id].db_user_id,
-                    language_code=room.meta_data.settings.language,
                     total_rounds=room.meta_data.current_round - 1,
                     started_at=room.meta_data.game_started_at,
                     player_results=[
@@ -305,7 +317,6 @@ async def podium(manager: RoomManager, context: Context):
                             "user_id": room.players[entry["player_id"]].db_user_id,
                             "final_score": entry["score"],
                             "final_rank": entry["rank"],
-                            "bluff_votes_received": room.meta_data.bluff_votes_received.get(entry["player_id"], 0),
                         }
                         for entry in room.meta_data.podium
                     ],
@@ -366,7 +377,6 @@ async def to_next_phase(manager: RoomManager, context: Context):
         room.meta_data.current_round = 1
         room.meta_data.game_id = uuid4()
         room.meta_data.game_started_at = datetime.now(timezone.utc)
-        room.meta_data.bluff_votes_received = {}
         room.meta_data.game_results_saved = False
         room.meta_data.game_results_saving = False
         clear_data(room)
@@ -375,15 +385,13 @@ async def to_next_phase(manager: RoomManager, context: Context):
         room.meta_data.phase.start()
         await get_categories(manager, context)
         return
-    current_task = asyncio.current_task()
-    if (
-        room.meta_data.timer_task
-        and room.meta_data.timer_task is not current_task
-        and not room.meta_data.timer_task.done()
-    ):
-        room.meta_data.timer_task.cancel()
     if room.meta_data.phase.current_state not in game_phases:
         raise GameError("INVALID_PHASE", "Cannot advance to next phase from current phase")
+    current_task = asyncio.current_task()
+    old_timer = room.meta_data.timer_task
+    room.meta_data.timer_task = None
+    if old_timer and old_timer is not current_task and not old_timer.done():
+        old_timer.cancel()
     room.meta_data.phase.cycle()
     handler = game_phases[room.meta_data.phase.current_state]
     await handler(manager, context)
@@ -555,14 +563,17 @@ async def process_event(manager: RoomManager, room_id: str, user_id: str, user_n
     """
     if event_name not in event_handlers:
         raise GameError("INVALID_PAYLOAD", "Invalid event")
-    if room_id not in manager.rooms:
+    room = manager.rooms.get(room_id)
+    if room is None:
         raise GameError("ROOM_NOT_FOUND", "Room not found")
-    if user_id not in manager.rooms[room_id].players:
-        raise GameError("PLAYER_NOT_FOUND", "Player not found in the room")
     if data is None:
         raise GameError("INVALID_PAYLOAD", "Missing data in request")
-    current_phase = manager.rooms[room_id].meta_data.phase.current_state
-    validate_phase(current_phase, event_name)
-    handler = event_handlers[event_name]
-    context = Context(room_id=room_id, user_id=user_id, user_name=user_name, data=data)
-    await handler(manager, context)
+    async with room.meta_data.phase_lock:
+        if manager.rooms.get(room_id) is not room:
+            raise GameError("ROOM_NOT_FOUND", "Room not found")
+        if user_id not in room.players:
+            raise GameError("PLAYER_NOT_FOUND", "Player not found in the room")
+        validate_phase(room.meta_data.phase.current_state, event_name)
+        handler = event_handlers[event_name]
+        context = Context(room_id=room_id, user_id=user_id, user_name=user_name, data=data)
+        await handler(manager, context)
