@@ -48,7 +48,7 @@ class GameHistoryItem(BaseModel):
     finished_at: datetime
     placement: int = Field(ge=1)
     final_score: int = Field(ge=0)
-    result: Literal["WIN", "LOSS", "DRAW"]
+    result: Literal["WIN", "LOSS"]
     participant_count: int = Field(ge=1)
     participants: list[HistoryParticipant]
     total_rounds: int = Field(ge=1)

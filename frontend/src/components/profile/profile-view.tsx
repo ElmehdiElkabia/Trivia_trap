@@ -4,7 +4,6 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { UserData } from "@/types/userData";
-import { GamePerformance } from "./game-performance";
 import { ProfileAchievements } from "./profile-achievements";
 import { ProfileHeader } from "./profile-header";
 import { ProfileStats } from "./profile-stats";
@@ -22,10 +21,7 @@ export function ProfileView({ user, isOwner = false }: { user: UserData; isOwner
       className="space-y-4 sm:space-y-5"
     >
       <ProfileHeader user={user} isOwner={isOwner} onEdit={() => setEditing(true)} />
-      <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.72fr)]">
-        <ProfileStats user={user} />
-        <GamePerformance analytics={user.analytics} />
-      </div>
+      <ProfileStats user={user} />
       <ProfileAchievements achievements={user.achievements} />
       {isOwner ? <EditProfileDialog open={editing} onOpenChange={setEditing} user={user} /> : null}
     </motion.div>

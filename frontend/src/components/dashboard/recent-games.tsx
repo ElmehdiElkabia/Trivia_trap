@@ -22,13 +22,13 @@ export function RecentGames({ history }: { history: GameHistoryResponse | null }
           {history?.items.length === 0 ? <p className="px-4 py-8 text-center text-xs text-muted-foreground">No completed games yet.</p> : null}
           {history?.items.map((game) => (
             <div key={game.match_id} className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.025]">
-              <div className={cn("grid size-9 shrink-0 place-items-center rounded-xl text-[10px] font-black", game.result === "WIN" ? "bg-trap-success/10 text-trap-success" : game.result === "DRAW" ? "bg-accent/10 text-accent" : "bg-white/[0.05] text-[#8f8f99]")}>
+              <div className={cn("grid size-9 shrink-0 place-items-center rounded-xl text-[10px] font-black", game.result === "WIN" ? "bg-trap-success/10 text-trap-success" : "bg-white/[0.05] text-[#8f8f99]")}>
                 {game.result[0]}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="truncate text-sm font-extrabold text-white">Match #{game.match_id.slice(0, 8)}</p>
-                  <Badge className={cn("h-5 border-0 px-1.5 text-[8px] font-black", game.result === "WIN" ? "bg-trap-success/10 text-trap-success" : game.result === "DRAW" ? "bg-accent/10 text-accent" : "bg-trap-danger/10 text-trap-danger")}>
+                  <Badge className={cn("h-5 border-0 px-1.5 text-[8px] font-black", game.result === "WIN" ? "bg-trap-success/10 text-trap-success" : "bg-trap-danger/10 text-trap-danger")}>
                     {game.result}
                   </Badge>
                 </div>

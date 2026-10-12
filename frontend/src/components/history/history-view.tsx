@@ -18,13 +18,11 @@ const filters: { value: HistoryFilter; label: string }[] = [
   { value: "all", label: "All results" },
   { value: "wins", label: "Wins" },
   { value: "losses", label: "Losses" },
-  { value: "draws", label: "Draws" },
 ];
 
 const resultStyles: Record<HistoryResult, string> = {
   WIN: "bg-trap-success/10 text-trap-success",
   LOSS: "bg-trap-danger/10 text-trap-danger",
-  DRAW: "bg-accent/10 text-accent",
 };
 
 export function HistoryView({ initialData }: { initialData: GameHistoryResponse }) {

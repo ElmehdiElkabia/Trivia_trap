@@ -1,5 +1,5 @@
-export type HistoryResult = "WIN" | "LOSS" | "DRAW";
-export type HistoryFilter = "all" | "wins" | "losses" | "draws";
+export type HistoryResult = "WIN" | "LOSS";
+export type HistoryFilter = "all" | "wins" | "losses";
 
 export type HistoryParticipant = {
   username: string;

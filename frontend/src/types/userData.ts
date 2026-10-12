@@ -18,14 +18,6 @@ export type UserAchievements = {
     unlocked: boolean;
 };
 
-export type CategoryAnalytics = {
-    category: string;
-    total_rounds: number;
-    knowledge_accuracy: number;
-    bluff_efficiency: number;
-};
-
-
 export type UserStatistics = {
     total_games: number;
     total_wins: number;
@@ -41,7 +33,6 @@ export type UserData = {
     join_date: Date;
     stats: UserStatistics;
     achievements: UserAchievements[];
-    analytics: CategoryAnalytics[];
 };
 
 export type CurrentUser = {

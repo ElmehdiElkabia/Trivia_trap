@@ -1,7 +1,7 @@
 from dataProcessing.models import User
 from authentication.repository import find_user_by_username
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, case, exists
+from sqlalchemy import select, func, case
 from sqlalchemy.orm import aliased, selectinload
 from typing import Annotated
 from fastapi import Depends
@@ -176,22 +176,14 @@ async def get_user_game_history(
     result_filter: str,
 ) -> GameHistoryResponse:
     own_result = aliased(GamePlayerResult)
-    tied_result = aliased(GamePlayerResult)
-    has_tied_score = exists().where(
-        tied_result.game_id == own_result.game_id,
-        tied_result.user_id != own_result.user_id,
-        tied_result.final_score == own_result.final_score,
-    )
     filters = [
         own_result.user_id == user_id,
         Game.finished_at.is_not(None),
     ]
     if result_filter == "wins":
         filters.append(own_result.final_rank == 1)
-    elif result_filter == "draws":
-        filters.extend((own_result.final_rank != 1, has_tied_score))
     elif result_filter == "losses":
-        filters.extend((own_result.final_rank != 1, ~has_tied_score))
+        filters.append(own_result.final_rank != 1)
 
     total = await session.scalar(
         select(func.count()).select_from(Game).join(
@@ -217,11 +209,7 @@ async def get_user_game_history(
     items = []
     for game in games:
         own = next(row for row in game.player_results if row.user_id == user_id)
-        tied = any(
-            row.user_id != user_id and row.final_score == own.final_score
-            for row in game.player_results
-        )
-        outcome = "WIN" if own.final_rank == 1 else "DRAW" if tied else "LOSS"
+        outcome = "WIN" if own.final_rank == 1 else "LOSS"
         ordered_results = sorted(game.player_results, key=lambda row: row.final_rank)
         items.append(GameHistoryItem(
             match_id=game.id,
