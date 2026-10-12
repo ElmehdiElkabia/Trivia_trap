@@ -436,8 +436,8 @@ async def submit_vote(manager: RoomManager, context: Context):
 
     if not validation["is_valid"]:
         raise GameError(
-            validation["reason"],
-            "Vote rejected",
+            "VOTE_REJECTED",
+            f"{validation['reason']}",
         )
 
     room.meta_data.voting_results[context.user_id] = vote_choice

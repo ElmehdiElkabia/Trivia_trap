@@ -12,12 +12,6 @@ class UserStatistics(BaseModel):
     total_points: Annotated[int, Field(ge=0)] = 0
     high_score: Annotated[int, Field(ge=0)] = 0
 
-class UserCategoryAnalytics(BaseModel):
-    category: Annotated[str, Field(min_length=1, max_length=50)]
-    total_rounds: Annotated[int, Field(ge=0)]
-    knowledge_accuracy: Annotated[float, Field(ge=0)]
-    bluff_efficiency: Annotated[float, Field(ge=0)]
-
 class UserAchievements(BaseModel):
     name: Annotated[str, Field(min_length=1, max_length=50)]
     description: Annotated[str, Field(min_length=1, max_length=100)]
@@ -32,7 +26,6 @@ class UserProfile(BaseModel, arbitrary_types_allowed=True):
     joined_date: datetime
     stats: UserStatistics
     achievements: list[UserAchievements]
-    analytics: list[UserCategoryAnalytics]
 
 
 class HistoryParticipant(BaseModel):

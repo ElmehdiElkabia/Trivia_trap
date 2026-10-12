@@ -160,7 +160,6 @@ async def upload_avatar(
                 buffer.write(chunk)
     finally:
         await file.close()
-    # Refresh the browser's image cache without changing the file on disk.
     await update_avatar_path(db, user.id, f"/uploads/{safe_filename}?v={uuid4().hex}")
     return {
         "status": "success",

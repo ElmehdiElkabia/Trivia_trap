@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ export function ErrorState({ title, description, actionLabel, onAction, secondar
   return (
     <div role="alert" className={cn("rounded-2xl border border-destructive/30 bg-destructive/[0.07] p-5 text-center", className)}>
       <span className="mx-auto grid size-10 place-items-center rounded-xl bg-destructive/15 text-destructive">
-        <Icon className="size-5" aria-hidden="true" />
+        { title == "CONRATULATIONS, THIS IS THE EXACT TRUTH" ? <PartyPopper className="size-5 text-[#ff6000]" aria-hidden="true" /> : <Icon className="size-5" aria-hidden="true" /> }
       </span>
       <h2 className="mt-3 font-display text-lg font-black text-foreground">{title}</h2>
       <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">{description}</p>

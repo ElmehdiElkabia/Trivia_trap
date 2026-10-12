@@ -39,8 +39,12 @@ const knownErrors: Record<string, GameErrorPresentation> = {
     message: "The game could not process that request. Please try again.",
   },
   BLUFF_REJECTED: {
-    title: "ANSWER NOT ACCEPTED",
-    message: "That answer cannot be used. Try a different bluff.",
+    title: "CONRATULATIONS, THIS IS THE EXACT TRUTH",
+    message: "Try different bluff to fool your opponents.",
+  },
+  VOTE_REJECTED: {
+    title: "VOTE REJECTED",
+    message: "Your vote was rejected. Please try again.",
   },
   ERROR: {
     title: "SOMETHING WENT WRONG",
@@ -52,8 +56,13 @@ export function gameErrorPresentation(
   error: Pick<ServerErrorData, "code" | "message">,
 ): GameErrorPresentation {
   const known = knownErrors[error.code];
-  if (known) return known;
   const message = error.message.trim();
+  if (known) {
+    if (error.code === "VOTE_REJECTED") {
+      return { ...known, message: message || known.message };
+    }
+    return known;
+  }
   return {
     title: "GAME ERROR",
     message: message || "Something went wrong. Please try again.",
