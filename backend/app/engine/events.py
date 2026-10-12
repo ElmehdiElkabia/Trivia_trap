@@ -315,7 +315,6 @@ async def podium(manager: RoomManager, context: Context):
                         }
                         for entry in room.meta_data.podium
                     ],
-                    category_results=[],
                 )
                 room.meta_data.game_results_saved = True
             except Exception:

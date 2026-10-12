@@ -30,11 +30,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from .database import AsyncSessionLocal
-from .models import (
-    Game,
-    GamePlayerCategoryResult,
-    GamePlayerResult,
-)
+from .models import Game, GamePlayerResult
 
 
 async def save_game_results(
@@ -44,7 +40,6 @@ async def save_game_results(
     total_rounds: int,
     started_at: datetime,
     player_results: list[dict],
-    category_results: list[dict],
 ) -> UUID:
     if not isinstance(host_user_id, int):
         raise ValueError("host_user_id must be an integer")
@@ -84,19 +79,5 @@ async def save_game_results(
         session.add_all(results)
 
         await session.flush()
-
-        category_statistics = [
-            GamePlayerCategoryResult(
-                game_id=game_id,
-                user_id=result["user_id"],
-                category_id=result["category_id"],
-                questions_played=result["questions_played"],
-                correct_answers=result["correct_answers"],
-                bluff_votes_received=result["bluff_votes_received"],
-            )
-            for result in category_results
-        ]
-
-        session.add_all(category_statistics)
 
     return game_id

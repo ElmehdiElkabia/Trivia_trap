@@ -8,7 +8,6 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
-    ForeignKeyConstraint,
     Index,
     String,
     Text,
@@ -36,10 +35,6 @@ class Category(Base):
         cascade="all, delete-orphan",
     )
     questions: Mapped[list["Question"]] = relationship(
-        back_populates="category",
-        passive_deletes=True,
-    )
-    player_results: Mapped[list["GamePlayerCategoryResult"]] = relationship(
         back_populates="category",
         passive_deletes=True,
     )
@@ -320,74 +315,6 @@ class GamePlayerResult(Base):
     )
     user: Mapped["User"] = relationship(
         back_populates="game_results",
-    )
-    category_results: Mapped[list["GamePlayerCategoryResult"]] = relationship(
-        back_populates="game_player_result",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-
-
-class GamePlayerCategoryResult(Base):
-    __tablename__ = "game_player_category_results"
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["game_id", "user_id"],
-            [
-                "game_player_results.game_id",
-                "game_player_results.user_id",
-            ],
-            ondelete="CASCADE",
-            name="fk_player_category_result_game_player",
-        ),
-        CheckConstraint(
-            "questions_played >= 0",
-            name="check_player_category_questions",
-        ),
-        CheckConstraint(
-            "correct_answers >= 0",
-            name="check_player_category_correct_answers",
-        ),
-        CheckConstraint(
-            "correct_answers <= questions_played",
-            name="check_player_category_valid_answers",
-        ),
-        Index(
-            "ix_player_category_results_user_category",
-            "user_id",
-            "category_id",
-        ),
-    )
-
-    game_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        primary_key=True,
-    )
-    user_id: Mapped[int] = mapped_column(
-        primary_key=True,
-    )
-    category_id: Mapped[int] = mapped_column(
-        ForeignKey("categories.id", ondelete="RESTRICT"),
-        primary_key=True,
-    )
-    questions_played: Mapped[int] = mapped_column(
-        nullable=False,
-        server_default=text("0"),
-    )
-    correct_answers: Mapped[int] = mapped_column(
-        nullable=False,
-        server_default=text("0"),
-    )
-    bluff_votes_received: Mapped[int] = mapped_column(
-        nullable=False,
-        server_default=text("0"),
-    )
-
-    game_player_result: Mapped["GamePlayerResult"] = relationship(
-        back_populates="category_results",
-    )
-    category: Mapped["Category"] = relationship(
-        back_populates="player_results",
     )
 
 
