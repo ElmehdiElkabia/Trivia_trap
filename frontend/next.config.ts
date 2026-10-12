@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
     compiler: {
     removeConsole: false,
   },
-  allowedDevOrigins: ["127.0.0.1", "10.14.2.9"],
+  allowedDevOrigins: ["127.0.0.1"],
   async headers() {
     return ["/login", "/register"].map((source) => ({
       source,
