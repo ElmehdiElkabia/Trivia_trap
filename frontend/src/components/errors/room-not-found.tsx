@@ -91,14 +91,13 @@ export function RoomNotFound() {
           id="room-not-found-title"
           className="mt-5 font-secondary text-[clamp(2rem,6vw,4.2rem)] uppercase leading-none tracking-[-0.03em] text-white"
         >
-          Room not found
+          Page not found
         </motion.h1>
         <motion.p
           {...enter(0.18)}
           className="mt-5 max-w-xl text-sm leading-6 text-[#a6a6ae] sm:text-base sm:leading-7"
         >
-          That room code is invalid, the room has expired, or the match has
-          already ended. Check the code and try joining again.
+          That page is not available. The link you followed may be broken or the page may have been removed.
         </motion.p>
 
         <motion.div

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { AvailableRooms } from "@/components/dashboard/available-rooms";
 import { FriendsOnline } from "@/components/dashboard/friends-online";
 import { QuickStats } from "@/components/dashboard/quick-stats";
 import { RecentGames } from "@/components/dashboard/recent-games";
@@ -42,6 +43,7 @@ export default async function DashboardPage() {
         <RecentGames history={history} />
         <FriendsOnline />
       </div>
+      <AvailableRooms />
     </DashboardShell>
   );
 }
