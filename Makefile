@@ -11,22 +11,7 @@ down-v:
 
 re: down all
 
-backend:
-	@$(MAKE) -sC backend run
-
-google:
-	@python3 -m http.server 3000 --bind 127.0.0.1 --directory backend/app/authentication/docs
-
-clean:
-	@$(MAKE) -sC backend clean
-
-frontend:
-	@$(MAKE) -sC frontend run
-
-fclean:
-	@$(MAKE) -sC backend fclean
-
-.PHONY: all backend google clean frontend fclean down volumes re up
+.PHONY: all  down re up
 
 # 	@docker compose exec -T postgres sh -c '\
 # 		export VAULT_ADDR=http://vault:8200; \
