@@ -1,3 +1,6 @@
+all: check-secrets
+	@docker compose up --build -d
+
 check-secrets:
 	@if [ ! -s secrets/smtp_password ] && \
 		! docker compose run --rm --no-deps --entrypoint /bin/sh vault-bootstrap \
@@ -6,9 +9,6 @@ check-secrets:
 		echo "Create it with: nano secrets/smtp_password"; \
 		exit 1; \
 	fi
-
-all: check-secrets
-	@docker compose up --build -d
 
 up: all
 
