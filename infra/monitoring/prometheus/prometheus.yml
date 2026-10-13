@@ -19,6 +19,10 @@ scrape_configs:
     static_configs:
       - targets: ["blackbox-exporter:9115"]
 
+  - job_name: nginx
+    static_configs:
+      - targets: ["nginx-exporter:9113"]
+
   # Blackbox probes check the same application endpoints we care about during
   # normal operation without modifying teammate backend/frontend code.
   - job_name: web
@@ -26,10 +30,15 @@ scrape_configs:
     params:
       module: [http_2xx]
     static_configs:
-      - targets:
-          - http://backend:8000/health
-          - http://backend:8000/ready
-          - http://frontend:3000/
+      - targets: ["http://backend:8000/health"]
+        labels:
+          endpoint: Backend liveness
+      - targets: ["http://backend:8000/ready"]
+        labels:
+          endpoint: Backend readiness
+      - targets: ["http://frontend:3000/"]
+        labels:
+          endpoint: Frontend
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -45,6 +54,8 @@ scrape_configs:
     static_configs:
       - targets:
           - https://nginx:8443/status
+        labels:
+          endpoint: Nginx HTTPS
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

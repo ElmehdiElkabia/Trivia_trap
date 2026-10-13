@@ -1,12 +1,16 @@
 #!/bin/sh
 
 # Vault integration smoke/security test for Trivia Trap.
-# This version assumes JWT_SECRET_KEY is stored at
+# This version assumes backend secrets are stored at
 # secret/trivia/backend-auth and injected by Vault Agent.
 #
 # Usage:
-#   ./test-vault.sh              # current/default Compose project
-#   ./test-vault.sh vaultclean   # specific Compose project name
+#   ./infra/tests/test-vault2.sh              # current/default Compose project
+#   ./infra/tests/test-vault2.sh vaultclean   # specific Compose project name
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_ROOT"
 
 PROJECT_NAME="${1:-}"
 fail=0
@@ -124,6 +128,23 @@ TOKEN=$(vault write -field=token auth/approle/login \
   role_id="$(cat /vault/approle/role-id)" \
   secret_id="$(cat /vault/approle/secret-id)") || exit 1
 
+SMTP_PASSWORD=$(VAULT_TOKEN="$TOKEN" vault kv get \
+  -field=smtp_password secret/trivia/backend-auth) || exit 1
+
+[ -n "$SMTP_PASSWORD" ]
+'; then
+  pass "backend can read the SMTP password"
+else
+  fail_msg "backend cannot read the SMTP password"
+fi
+
+if dc exec -T backend sh -c '
+export VAULT_ADDR=http://vault:8200
+
+TOKEN=$(vault write -field=token auth/approle/login \
+  role_id="$(cat /vault/approle/role-id)" \
+  secret_id="$(cat /vault/approle/secret-id)") || exit 1
+
 VAULT_TOKEN="$TOKEN" vault kv put \
   secret/trivia/forbidden-test value=test >/dev/null 2>&1
 '; then
@@ -164,7 +185,7 @@ else
 fi
 
 echo
-echo "=== 7. Vault Agent JWT injection ==="
+echo "=== 7. Vault Agent backend-secret injection ==="
 if dc exec -T backend python -c '
 from pathlib import Path
 
@@ -175,15 +196,12 @@ for cmdline_path in Path("/proc").glob("[0-9]*/cmdline"):
             continue
 
         environment = cmdline_path.with_name("environ").read_bytes().split(b"\0")
-        values = [
-            item.split(b"=", 1)[1]
-            for item in environment
-            if item.startswith(b"JWT_SECRET_KEY=")
-        ]
-        if len(values) != 1:
+        values = dict(item.split(b"=", 1) for item in environment if b"=" in item)
+        key = values.get(b"JWT_SECRET_KEY", b"")
+        smtp_password = values.get(b"SMTP_PASSWORD", b"")
+        if not key or not smtp_password:
             continue
 
-        key = values[0]
         valid = len(key) == 64 and all(char in b"0123456789abcdef" for char in key)
         raise SystemExit(0 if valid else 1)
     except (OSError, PermissionError):
@@ -191,21 +209,21 @@ for cmdline_path in Path("/proc").glob("[0-9]*/cmdline"):
 
 raise SystemExit(1)
 '; then
-  pass "Vault Agent injected JWT_SECRET_KEY into FastAPI"
+  pass "Vault Agent injected backend secrets into FastAPI"
 else
-  fail_msg "FastAPI does not have a valid Vault-injected JWT_SECRET_KEY"
+  fail_msg "FastAPI does not have valid Vault-injected backend secrets"
 fi
 
 echo
-echo "=== 8. Docker metadata secrets ==="
+echo "=== 8. Secret source and Docker metadata ==="
 backend_id="$(dc ps -q backend)"
 postgres_id="$(dc ps -q postgres)"
 
 if [ -n "$backend_id" ] && \
    ! docker inspect "$backend_id" \
      --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | \
-     grep -Eq 'DATABASE_URL|POSTGRES_PASSWORD|JWT_SECRET_KEY'; then
-  pass "backend Docker metadata has no database or JWT secret"
+     grep -Eq 'DATABASE_URL|POSTGRES_PASSWORD|JWT_SECRET_KEY|SMTP_PASSWORD'; then
+  pass "backend Docker metadata has no database, JWT, or SMTP secret"
 else
   fail_msg "backend metadata contains a secret or could not be checked"
 fi
@@ -217,6 +235,18 @@ if [ -n "$postgres_id" ] && \
   pass "postgres Docker metadata has no database password"
 else
   fail_msg "postgres metadata contains its password or could not be checked"
+fi
+
+if ! grep -q '^SMTP_PASSWORD=' .env .env.example 2>/dev/null; then
+  pass "SMTP password is not stored in an env file"
+else
+  fail_msg "SMTP password is still stored in an env file"
+fi
+
+if git check-ignore -q --no-index secrets/smtp_password; then
+  pass "local SMTP bootstrap file is ignored by Git"
+else
+  fail_msg "local SMTP bootstrap file is not ignored by Git"
 fi
 
 echo

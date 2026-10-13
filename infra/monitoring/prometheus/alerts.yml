@@ -18,7 +18,7 @@ groups:
           summary: "PostgreSQL cannot be scraped"
 
       - alert: MonitoringExporterDown
-        expr: up{job=~"postgres|blackbox-exporter"} == 0
+        expr: up{job=~"postgres|blackbox-exporter|nginx"} == 0
         for: 1m
         labels:
           severity: warning

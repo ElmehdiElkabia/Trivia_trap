@@ -7,6 +7,7 @@ USER root
 COPY default.conf /etc/nginx/templates/conf.d/default.conf.template
 COPY status.html /usr/share/nginx/html/status.html
 COPY auth-waf-exclusions.conf /etc/modsecurity.d/owasp-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf
+COPY grafana-waf-exclusions.conf /etc/modsecurity.d/grafana-waf-exclusions.conf
 COPY start.sh /start.sh
 RUN chmod +x /start.sh \
     && mkdir -p /etc/nginx/certs \
