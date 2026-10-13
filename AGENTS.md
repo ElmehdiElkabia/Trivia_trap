@@ -7,6 +7,7 @@ This file describes the repository as checked in. Before changing behavior, conf
 - The backend is a FastAPI application on Python >=3.13. It uses Pydantic, `python-statemachine`, async SQLAlchemy/`asyncpg`, Alembic, and `uv` (`backend/pyproject.toml`, `backend/uv.lock`).
 - The frontend is Next.js 16, React 19, TypeScript, and Tailwind CSS. `frontend/package.json` declares pnpm; both `pnpm-lock.yaml` and `package-lock.json` are present. The frontend Makefile uses pnpm.
 - PostgreSQL is the persistent data store. The application and Alembic both specify the local URL in `backend/app/dataProcessing/database.py` and `backend/alembic.ini`. Docker Compose persists uploaded avatars in the `backend_uploads` volume mounted at `/app/uploads`. Live room state is held in the backend process; Redis is not integrated.
+- Docker Compose stores the PostgreSQL, JWT, SMTP, and Grafana credentials in Vault. Vault Agent injects the backend credentials into the FastAPI process. On first initialization, `vault-bootstrap` reads SMTP from the Git-ignored `secrets/smtp_password` file mounted read-only; delete the file after bootstrap. SMTP is not stored in `.env` or backend container metadata.
 
 ## Repository map
 
@@ -60,6 +61,7 @@ Run these from the repository root unless a command starts with `cd`.
 | Migrate/check schema | `cd backend && uv run alembic upgrade head`; `cd backend && uv run alembic current`; `cd backend && uv run alembic check` | These use the configured PostgreSQL URL. |
 | Seed questions | `cd backend && uv run python -m app.dataProcessing.seed_database` | Add `--with-mock-users` only for local fixtures. |
 | Bootstrap local DB | `cd backend && bash scripts/bootstrap_local_db.sh` | Starts/creates persistent Docker PostgreSQL, migrates, seeds mock data, and checks schema/content. |
+| Vault integration | `./infra/tests/test-vault2.sh` | Requires the Docker Compose stack to be running; checks secret access, isolation, injection, and Docker metadata. |
 
 `backend/.env.example` lists JWT, Google, mail, and password-reset settings. `JWT_SECRET_KEY` is required when importing the backend. Do not commit credentials. The root Makefile also has `make google` to serve authentication docs and cleanup targets. `backend/app/authentication/docs/database.md` describes integration tests that are absent from this checkout.
 

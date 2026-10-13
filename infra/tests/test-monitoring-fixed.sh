@@ -3,7 +3,9 @@ set -eu
 
 # Prometheus + Grafana acceptance test for Trivia_trap.
 # Run from the repository root after: docker compose up --build -d
-# Optional: ./test-monitoring.sh --alert-test
+# Optional: sh infra/tests/test-monitoring-fixed.sh --alert-test
+
+cd "$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 
 ALERT_TEST=0
 [ "${1:-}" = "--alert-test" ] && ALERT_TEST=1
@@ -112,22 +114,81 @@ check_grafana_provisioning() {
   [ -n "$password" ] || return 1
 
   docker compose exec -T -e GRAFANA_TEST_PASSWORD="$password" backend python - <<'PY' >/dev/null 2>&1
-import base64, json, os, urllib.request
+import base64, json, os, ssl, time, urllib.parse, urllib.request
 password = os.environ["GRAFANA_TEST_PASSWORD"]
 header = "Basic " + base64.b64encode(("admin:" + password).encode()).decode()
 
-def get(path):
-    req = urllib.request.Request("http://grafana:3000" + path, headers={"Authorization": header})
-    with urllib.request.urlopen(req, timeout=5) as r:
+def get(path, payload=None):
+    req = urllib.request.Request("https://nginx:8443/grafana" + path,
+        data=json.dumps(payload).encode() if payload is not None else None,
+        headers={"Authorization": header, "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=10, context=ssl._create_unverified_context()) as r:
         return json.load(r)
 
 ds = get("/api/datasources/uid/prometheus")
 if ds.get("type") != "prometheus":
     raise SystemExit(1)
 
-dash = get("/api/dashboards/uid/trivia-trap-overview")
-if dash.get("dashboard", {}).get("title") != "Trivia Trap Overview":
-    raise SystemExit(1)
+for uid, title in {
+    "trivia-trap-overview": "Trivia Trap Overview",
+    "trivia-postgres": "Trivia Trap - PostgreSQL",
+}.items():
+    dash = get("/api/dashboards/uid/" + uid)
+    if dash.get("dashboard", {}).get("title") != title:
+        raise SystemExit(1)
+    if uid == "trivia-trap-overview":
+        active_alerts = next(
+            panel for panel in dash["dashboard"]["panels"]
+            if panel.get("title") == "Active alerts"
+        )
+        assert active_alerts.get("type") == "table"
+        assert active_alerts["targets"][0]["expr"] == 'ALERTS{alertstate="firing"}'
+    for panel in dash["dashboard"]["panels"]:
+        queries = []
+        for target in panel.get("targets", []):
+            expr = target["expr"].replace("$__rate_interval", "1m").replace("$__range", "1h").replace("$database", ".*")
+            queries.append({**target, "expr": expr,
+                "datasource": {"type": "prometheus", "uid": "prometheus"},
+                "intervalMs": 15000, "maxDataPoints": 300})
+        if not queries:
+            continue
+        now = int(time.time() * 1000)
+        result = get("/api/ds/query", {"queries": queries, "from": str(now - 3600000), "to": str(now)})
+        for query in queries:
+            data = result.get("results", {}).get(query["refId"], {})
+            assert not data.get("error") and data.get("status", 200) == 200, panel["title"]
+            if panel["title"] == "Active alerts":
+                # No frames is the correct result when no alerts are firing.
+                continue
+            # Idle ratios can legitimately return null, but missing series fail.
+            assert any(frame.get("data", {}).get("values", [[]])[0]
+                       for frame in data.get("frames", [])), panel["title"]
+
+selector = 'pg_stat_database_numbackends{job="postgres",datname!~"template0|template1",datname!=""}'
+path = "/api/datasources/uid/prometheus/resources/api/v1/label/datname/values?"
+assert get(path + urllib.parse.urlencode({"match[]": selector})).get("data")
+PY
+}
+
+check_grafana_waf_scope() {
+  docker compose exec -T backend python - <<'PY' >/dev/null 2>&1
+import json, ssl, urllib.error, urllib.request
+
+# Query exceptions must not bypass login, other fields, or other routes.
+cases = [
+    ("/grafana/api/ds/query", {"queries": []}, 401),
+    ("/grafana/api/ds/query", {"unexpected": "<script>alert(1)</script>"}, 403),
+    ("/api/__waf_monitoring_test__", {"queries": [{"expr": 'sum(rate(nginx_http_requests_total{job="nginx"}[1m]))'}]}, 403),
+]
+for path, payload, expected in cases:
+    req = urllib.request.Request("https://nginx:8443" + path,
+        data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
+    try:
+        urllib.request.urlopen(req, timeout=5, context=ssl._create_unverified_context())
+    except urllib.error.HTTPError as error:
+        assert error.code == expected, (path, error.code)
+    else:
+        raise AssertionError((path, "Expected rejection", expected))
 PY
 }
 
@@ -161,9 +222,9 @@ printf '%s\n' " PROMETHEUS + GRAFANA ACCEPTANCE TEST"
 printf '%s\n' "========================================"
 
 section "1. Required local configuration"
-if [ -f ../../.env ] &&
-   grep -Eq '^POSTGRES_USER=.+$' ../../.env &&
-   grep -Eq '^POSTGRES_DB=.+$' ../../.env; then
+if [ -f .env ] &&
+   grep -Eq '^POSTGRES_USER=.+$' .env &&
+   grep -Eq '^POSTGRES_DB=.+$' .env; then
   ok ".env contains POSTGRES_USER and POSTGRES_DB"
 else
   bad ".env is missing POSTGRES_USER or POSTGRES_DB"
@@ -180,7 +241,7 @@ if exited_zero vault-bootstrap; then ok "vault-bootstrap completed successfully"
 if exited_zero monitoring-secrets; then ok "monitoring-secrets completed successfully"; else bad "monitoring-secrets did not exit 0"; fi
 
 section "4. Monitoring containers"
-for service in prometheus blackbox-exporter postgres-exporter grafana; do
+for service in prometheus blackbox-exporter postgres-exporter nginx-exporter grafana; do
   if running "$service"; then ok "$service is running"; else bad "$service is not running"; fi
 done
 
@@ -191,6 +252,8 @@ if backend_http_ok "http://postgres-exporter:9187/metrics"; then ok "PostgreSQL 
 if backend_http_ok "http://grafana:3000/api/health"; then ok "Grafana API is healthy"; else bad "Grafana API is unhealthy"; fi
 
 section "6. Prometheus collected metrics"
+if prom_query_one 'up{job="nginx"}'; then ok "Prometheus scrapes the Nginx exporter"; else bad "Nginx exporter scrape failed"; fi
+if prom_query_one 'nginx_up{job="nginx"}'; then ok "Nginx stub_status scrape succeeds"; else bad "nginx_up is missing or not 1"; fi
 if prom_query_one 'pg_up{job="postgres"}'; then ok "Prometheus reports PostgreSQL UP"; else bad "pg_up is missing or not 1"; fi
 if prom_query_one 'probe_success{job="web",instance="http://backend:8000/health"}'; then ok "Backend liveness probe succeeds"; else bad "Backend liveness probe failed"; fi
 if prom_query_one 'probe_success{job="web",instance="http://backend:8000/ready"}'; then ok "Backend readiness probe succeeds"; else bad "Backend readiness probe failed"; fi
@@ -201,14 +264,17 @@ section "7. Alert rules"
 if check_rules; then ok "All three Prometheus alert rules are loaded"; else bad "One or more alert rules are missing"; fi
 
 section "8. Grafana provisioning and access control"
-if check_grafana_provisioning; then ok "Prometheus datasource and Trivia Trap dashboard are provisioned"; else bad "Grafana datasource/dashboard provisioning failed"; fi
+if check_grafana_provisioning; then ok "Both dashboards and database filter return data through HTTPS/WAF"; else bad "Grafana provisioning/query check failed (allow one minute of scrapes)"; fi
 if check_grafana_requires_auth; then ok "Grafana API requires authentication"; else bad "Grafana authentication check failed"; fi
+if check_grafana_waf_scope; then ok "Grafana query exceptions preserve login and WAF checks elsewhere"; else bad "Grafana WAF exception scope failed"; fi
 
 section "9. Host exposure"
 if not_published prometheus 9090; then ok "Prometheus is not published directly"; else bad "Prometheus has a host port"; fi
 if not_published grafana 3000; then ok "Grafana is not published directly"; else bad "Grafana has a host port"; fi
 if not_published blackbox-exporter 9115; then ok "Blackbox Exporter is not published directly"; else bad "Blackbox Exporter has a host port"; fi
 if not_published postgres-exporter 9187; then ok "PostgreSQL Exporter is not published directly"; else bad "PostgreSQL Exporter has a host port"; fi
+
+if not_published nginx-exporter; then ok "Nginx Exporter is not published directly"; else bad "Nginx Exporter has a host port"; fi
 
 section "10. Grafana through HTTPS gateway"
 code="$(curl -k -s -o /dev/null -w '%{http_code}' https://localhost:8443/grafana/ || true)"
@@ -249,7 +315,7 @@ if [ "$ALERT_TEST" -eq 1 ]; then
   trap - EXIT INT TERM
 else
   section "11. Live alert firing test"
-  echo "SKIP: run './test-monitoring.sh --alert-test' to stop the frontend temporarily and verify a firing alert."
+  echo "SKIP: run 'sh infra/tests/test-monitoring-fixed.sh --alert-test' to stop the frontend temporarily and verify a firing alert."
 fi
 
 section "Final Compose status"

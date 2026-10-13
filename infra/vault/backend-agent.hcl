@@ -34,6 +34,11 @@ env_template "JWT_SECRET_KEY" {
   error_on_missing_key = true
 }
 
+env_template "SMTP_PASSWORD" {
+  contents             = "{{ with secret \"secret/data/trivia/backend-auth\" }}{{ .Data.data.smtp_password }}{{ end }}"
+  error_on_missing_key = true
+}
+
 exec {
   command = ["/bin/sh", "/app/scripts/start_backend.sh"]
 

@@ -47,6 +47,12 @@ fi
 
 # A new Vault must be initialized once to create its unseal key and root token.
 if [ "$NEW_INSTALL" -eq 1 ]; then
+  SMTP_PASSWORD_FILE=/run/bootstrap-secrets/smtp_password
+  [ -s "$SMTP_PASSWORD_FILE" ] || {
+    echo "Create secrets/smtp_password before the first Vault setup" >&2
+    exit 1
+  }
+
   echo "Initializing Vault..."
   umask 077
   vault operator init -key-shares=1 -key-threshold=1 -format=json > /tmp/vault-init.json
@@ -119,8 +125,14 @@ if [ "$NEW_INSTALL" -eq 1 ]; then
   # Generate the static JWT signing key once, during the first Vault setup.
   JWT_SECRET_KEY="$(vault write -field=random_bytes sys/tools/random/32 format=hex)"
   [ -n "$JWT_SECRET_KEY" ] || { echo "Vault failed to obtain a JWT signing key" >&2; exit 1; }
-  vault kv put secret/trivia/backend-auth jwt_secret_key="$JWT_SECRET_KEY" >/dev/null
-  unset JWT_SECRET_KEY
+  SMTP_PASSWORD="$(cat "$SMTP_PASSWORD_FILE")"
+  [ -n "$SMTP_PASSWORD" ] || { echo "SMTP password cannot be empty" >&2; exit 1; }
+
+  vault kv put secret/trivia/backend-auth \
+    jwt_secret_key="$JWT_SECRET_KEY" \
+    smtp_password="$SMTP_PASSWORD" >/dev/null
+
+  unset JWT_SECRET_KEY SMTP_PASSWORD SMTP_PASSWORD_FILE
 
   # Grafana gets its own generated admin credential. It is stored in Vault and
   # never hard-coded in compose.yaml or committed to the repository.

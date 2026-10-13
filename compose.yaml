@@ -38,6 +38,7 @@ services:
       - ./infra/vault/backend-policy.hcl:/vault/policies/backend-policy.hcl:ro
       - ./infra/vault/database-policy.hcl:/vault/policies/database-policy.hcl:ro
       - ./infra/vault/monitoring-policy.hcl:/vault/policies/monitoring-policy.hcl:ro
+      - ./secrets:/run/bootstrap-secrets:ro
       - vault_bootstrap:/vault/bootstrap
       - vault_backend_approle:/vault/backend-approle
       - vault_postgres_approle:/vault/postgres-approle
@@ -97,14 +98,13 @@ services:
   backend:
     build: ./backend
     environment:
-      # Vault Agent needs only the non-secret URL components; it injects the
-      # actual PostgreSQL password into DATABASE_URL at process start.
+      # Vault Agent injects DATABASE_URL, JWT_SECRET_KEY, and SMTP_PASSWORD
+      # directly into the FastAPI process at startup.
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       PASSWORD_RESET_URL: ${PASSWORD_RESET_URL}
       SMTP_EMAIL: ${SMTP_EMAIL}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
     depends_on:
       vault-bootstrap:
         condition: service_completed_successfully
@@ -193,6 +193,15 @@ services:
     volumes:
       - ./infra/monitoring/blackbox/blackbox.yml:/etc/blackbox_exporter/blackbox.yml:ro
 
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.5.1
+    command: ["--nginx.scrape-uri=http://nginx:8081/stub_status"]
+    depends_on:
+      nginx:
+        condition: service_healthy
+    expose:
+      - "9113"
+
   prometheus:
     image: prom/prometheus:v3.15.0
     command:
@@ -248,6 +257,9 @@ services:
       MODSEC_AUDIT_LOG_FORMAT: "JSON"
       ALLOWED_METHODS: "GET HEAD POST PUT PATCH DELETE OPTIONS"
       PUBLIC_HTTPS_PORT: "8443"
+    expose:
+      # Internal stub_status listener; never publish this on the host.
+      - "8081"
     ports:
       # Rootless Docker on the school machine cannot bind host ports 80/443.
       # The WAF/Nginx container also stays unprivileged and listens on 8080/8443.

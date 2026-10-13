@@ -2,6 +2,11 @@
 .env.*
 !.env.example
 
+# One-time local inputs for Vault bootstrap. Keep the directory itself so
+# Compose can mount it after the secret file has been deleted.
+secrets/*
+!secrets/.gitkeep
+
 frontend/.env.local
 frontend/node_modules/
 frontend/.next/
