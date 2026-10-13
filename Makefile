@@ -1,4 +1,13 @@
-all:
+check-secrets:
+	@if [ ! -s secrets/smtp_password ] && \
+		! docker compose run --rm --no-deps --entrypoint /bin/sh vault-bootstrap \
+			-c 'test -s /vault/bootstrap/unseal-key' >/dev/null 2>&1; then \
+		echo "Missing secrets/smtp_password."; \
+		echo "Create it with: nano secrets/smtp_password"; \
+		exit 1; \
+	fi
+
+all: check-secrets
 	@docker compose up --build -d
 
 up: all
@@ -11,11 +20,4 @@ down-v:
 
 re: down all
 
-.PHONY: all  down re up
-
-# 	@docker compose exec -T postgres sh -c '\
-# 		export VAULT_ADDR=http://vault:8200; \
-# 		TOKEN=$$(vault write -field=token auth/approle/login \
-# 			role_id="$$(cat /vault/approle/role-id)" \
-# 			secret_id="$$(cat /vault/approle/secret-id)"); \
-# 		VAULT_TOKEN="$$TOKEN" vault kv get -field=password secret/trivia/postgres'
+.PHONY: all check-secrets down down-v re up
