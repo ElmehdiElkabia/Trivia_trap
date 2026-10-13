@@ -1,8 +1,9 @@
 """Persistent user access shared by both authentication methods."""
+
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,13 +33,6 @@ async def find_user_by_google_sub(db: AsyncSession, google_sub: str) -> User | N
 
 async def find_user_by_username(db: AsyncSession, username: str) -> User | None:
     return await db.scalar(select(User).where(User.username_key == username.casefold()))
-
-
-async def find_existing_user_id(db: AsyncSession, username: str, email: str) -> int | None:
-    return await db.scalar(select(User.id).where(or_(
-        User.username_key == username.casefold(),
-        User.email_key == email.casefold(),
-    )).limit(1))
 
 
 async def create_user(

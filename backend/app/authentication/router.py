@@ -1,3 +1,5 @@
+"""Router for user authentication endpoints."""
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 from authentication.repository import DuplicateUserError, create_user, find_user_by_email, find_user_by_username

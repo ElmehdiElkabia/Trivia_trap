@@ -1,3 +1,5 @@
+"""Email sending utility for user authentication."""
+
 import logging
 import os
 import smtplib

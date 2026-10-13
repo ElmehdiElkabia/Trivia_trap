@@ -1,3 +1,5 @@
+"""Security utilities for user authentication."""
+
 import os
 import jwt
 from jwt.exceptions import InvalidTokenError

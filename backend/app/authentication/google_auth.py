@@ -1,7 +1,6 @@
 """Google sign-in with a username choice for new accounts."""
 
 import os
-import re
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
@@ -10,7 +9,6 @@ from google.auth.exceptions import GoogleAuthError, TransportError
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
 from pydantic import BaseModel, Field, SecretStr
-from sqlalchemy.exc import IntegrityError
 
 from authentication.repository import (
     DbSession, DuplicateUserError, create_user, find_user_by_email,
@@ -23,7 +21,6 @@ from authentication.validation_route import AuthRoute
 
 
 google_router = APIRouter(route_class=AuthRoute)
-LEGACY_GOOGLE_USERNAME = re.compile(r"^Player[0-9a-f]{6,9}$")
 
 
 class GoogleLoginData(BaseModel):
@@ -68,8 +65,6 @@ async def google_login(
                 detail="An account with this email already exists. Sign in with your existing method.",
             )
         return UsernameRequiredResponse()
-    if LEGACY_GOOGLE_USERNAME.fullmatch(user.username):
-        return UsernameRequiredResponse()
 
     access_token = create_access_token(user.id, user.auth_version)
     set_access_cookie(response, request, access_token)
@@ -80,8 +75,7 @@ async def google_login(
 async def complete_google_signup(
     data: GoogleCompleteData, db: DbSession, request: Request, response: Response,
 ) -> TokenResponse:
-    # Verify Google's credential again; the browser keeps it only while the
-    # player is on the username step. No placeholder account or signup cookie.
+
     claims = await run_in_threadpool(verify_google_token, data.credential.get_secret_value())
     google_sub = google_identity(claims)
     user = await find_user_by_google_sub(db, google_sub)
@@ -90,29 +84,19 @@ async def complete_google_signup(
         email = verified_google_email(claims)
         if await find_user_by_email(db, email) is not None:
             raise HTTPException(status_code=409, detail="An account with this email already exists.")
-    elif not LEGACY_GOOGLE_USERNAME.fullmatch(user.username):
-        # A previous completion may have saved the account before the browser
-        # lost its response. Retrying is safe and signs the same Google user in.
+    else:
         access_token = create_access_token(user.id, user.auth_version)
         set_access_cookie(response, request, access_token)
         return TokenResponse(access_token=access_token)
 
     name_owner = await find_user_by_username(db, data.username)
-    if name_owner is not None and (user is None or name_owner.id != user.id):
+    if name_owner is not None:
         raise HTTPException(status_code=409, detail="That username is already taken.")
 
-    if user is None:
-        try:
-            user = await create_user(db, data.username, email, None, google_sub=google_sub)
-        except DuplicateUserError:
-            raise HTTPException(status_code=409, detail="That username or account is already taken.") from None
-    else:
-        user.username = data.username
-        try:
-            await db.commit()
-        except IntegrityError:
-            await db.rollback()
-            raise HTTPException(status_code=409, detail="That username is already taken.") from None
+    try:
+        user = await create_user(db, data.username, email, None, google_sub=google_sub)
+    except DuplicateUserError:
+        raise HTTPException(status_code=409, detail="That username or account is already taken.") from None
 
     access_token = create_access_token(user.id, user.auth_version)
     set_access_cookie(response, request, access_token)

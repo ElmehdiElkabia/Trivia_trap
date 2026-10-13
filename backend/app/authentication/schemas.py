@@ -1,7 +1,9 @@
+"""Data models for user authentication."""
+
 from typing import Annotated
 
 from password_validator import PasswordValidator
-from pydantic import AfterValidator, BaseModel, EmailStr, Field, SecretStr, field_validator, BeforeValidator
+from pydantic import AfterValidator, BaseModel, EmailStr, Field, SecretStr, field_validator
 
 
 password_checks = (
@@ -31,13 +33,7 @@ def validate_username(username: str) -> str:
         )
     return username
 
-class RegisterData(BaseModel):
-    username: Annotated[str, BeforeValidator(validate_username)] = Field(min_length=3, max_length=15)
-    email: EmailStr = Field(max_length=255)
-    password: str = Field(min_length=15, max_length=128)
-
 class UsernameData(BaseModel):
-    # Match the room player's maximum name length.
     username: str = Field(min_length=3, max_length=15)
 
     @field_validator("username")

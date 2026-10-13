@@ -1,4 +1,5 @@
 """Persistent, single-use password recovery."""
+
 import hashlib
 import os
 import secrets
@@ -48,7 +49,8 @@ class ResetPasswordData(BaseModel):
 
 @reset_router.post("/forgot-password", status_code=202)
 async def forgot_password(data: ForgotPasswordData, background_tasks: BackgroundTasks, db: DbSession):
-    # Validate configuration for every request, without revealing account existence.
+    """Initiate a password reset for the given email address."""
+
     reset_url = os.environ.get("PASSWORD_RESET_URL", "")
     try:
         url = urlsplit(reset_url)
@@ -60,7 +62,7 @@ async def forgot_password(data: ForgotPasswordData, background_tasks: Background
         raise HTTPException(503, "Password recovery is not configured.")
     now = datetime.now(timezone.utc)
     token = secrets.token_urlsafe(32)
-    # The conditional UPDATE serializes concurrent requests for the same user.
+
     email = await db.scalar(
         update(User).where(
             User.email_key == data.email.casefold(),
@@ -75,7 +77,6 @@ async def forgot_password(data: ForgotPasswordData, background_tasks: Background
     )
     await db.commit()
     if email is not None:
-        # The frontend owns the form; never derive its URL from a request header.
         link = f"{reset_url}#token={token}"
         background_tasks.add_task(
             send_email, email, "Reset your Trivia Trap password",
@@ -96,7 +97,7 @@ async def reset_password(data: ResetPasswordData, background_tasks: BackgroundTa
     if eligible is None:
         raise HTTPException(400, "Invalid or expired reset link.")
     password_hash = await run_in_threadpool(hash_password, data.password.get_secret_value())
-    # Recheck and consume atomically after hashing: only one request can succeed.
+
     email = await db.scalar(
         update(User).where(
             User.id == eligible,

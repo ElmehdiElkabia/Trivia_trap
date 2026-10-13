@@ -1,3 +1,5 @@
+"""Dependency to get the current authenticated user."""
+
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status, WebSocket, WebSocketException
@@ -29,11 +31,6 @@ async def get_current_user(
     token = credentials.credentials if credentials is not None else request.cookies.get(COOKIE_NAME)
     if not token:
         raise unauthorized()
-
-    # Cookie-authenticated writes need an allowed Origin to prevent cross-site requests.
-    if credentials is None and request.method not in {"GET", "HEAD", "OPTIONS"}:
-        if request.headers.get("origin") not in ALLOWED_BROWSER_ORIGINS:
-            raise HTTPException(status_code=403, detail="Origin is not allowed")
 
     try:
         user_id, version = decode_access_token(token)

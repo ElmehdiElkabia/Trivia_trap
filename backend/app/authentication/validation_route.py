@@ -1,3 +1,5 @@
+"""Custom route class to handle validation errors in authentication endpoints."""
+
 from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response, status
@@ -16,8 +18,7 @@ class AuthRoute(APIRoute):
             try:
                 return await original_handler(request)
             except RequestValidationError as exc:
-                # Missing-field errors can include the entire request as input.
-                # Only expose field locations and validation explanations.
+                # Do not include the actual request data in the error response.
                 errors = [
                     {"loc": error["loc"], "type": error["type"], "msg": error["msg"]}
                     for error in exc.errors()
