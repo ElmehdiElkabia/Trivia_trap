@@ -93,7 +93,7 @@ export function FriendsView() {
   const loadData = useCallback(async () => {
     try {
       const responses = await Promise.all([
-        apiFetch("/friends/"),
+        apiFetch("/friends"),
         apiFetch("/friends/requests"),
         apiFetch("/friends/requests/sent"),
       ]);
