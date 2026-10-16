@@ -21,6 +21,11 @@ jobs:
       - name: Verify Heroku CLI
         run: heroku --version
 
+      - name: Ensure Python buildpack is configured
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: heroku buildpacks:set heroku/python --app trivia-trap-api
+
       - name: Deploy backend to Heroku
         uses: akhileshns/heroku-deploy@v3.15.15
         with:
