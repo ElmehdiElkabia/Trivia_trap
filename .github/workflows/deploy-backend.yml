@@ -1,0 +1,27 @@
+
+name: Deploy Trivia Trap Backend
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy backend to Heroku
+        uses: akhileshns/heroku-deploy@v3.14.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: ${{ secrets.HEROKU_BACKEND_APP }}
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+          appdir: backend
