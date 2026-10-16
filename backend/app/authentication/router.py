@@ -7,7 +7,7 @@ from authentication.schemas import RegisterData, UserResponse
 from authentication.security import hash_password
 from authentication.validation_route import AuthRoute
 from authentication.schemas import LoginData, TokenResponse
-from authentication.security import create_access_token, authenticate_user
+from authentication.security import create_access_token, create_websocket_ticket, authenticate_user, WEBSOCKET_TICKET_EXPIRE_SECONDS
 from authentication.session_cookie import clear_access_cookie, set_access_cookie
 from typing import Annotated
 
@@ -41,35 +41,21 @@ async def register(data: RegisterData, db: DbSession) -> UserResponse:
     conflict = await registration_conflict(db, data.username, data.email)
     if conflict is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, conflict)
-
-    password_hash = await run_in_threadpool(
-        hash_password,
-        data.password.get_secret_value(),
-    )
+    password_hash = await run_in_threadpool(hash_password, data.password.get_secret_value())
     try:
         user = await create_user(db, data.username, data.email, password_hash)
     except DuplicateUserError:
-        # Another registration can claim a name or email after the first check.
         conflict = await registration_conflict(db, data.username, data.email)
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             conflict or "This username or email is already registered.",
         ) from None
-
-    return UserResponse(
-        id=str(user.id),
-        username=user.username,
-        email=user.email,
-    )
+    return UserResponse(id=str(user.id), username=user.username, email=user.email)
 
 
 @auth_router.post("/login", response_model=TokenResponse)
 async def login(data: LoginData, db: DbSession, request: Request, response: Response) -> TokenResponse:
-    user = await authenticate_user(
-        db, data.email,
-        data.password.get_secret_value(),
-    )
-
+    user = await authenticate_user(db, data.email, data.password.get_secret_value())
     if user is None:
         account = await find_user_by_email(db, data.email)
         if account is not None and account.google_sub is not None and account.password_hash is None:
@@ -82,20 +68,22 @@ async def login(data: LoginData, db: DbSession, request: Request, response: Resp
             detail="Invalid email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
     access_token = create_access_token(user.id, user.auth_version)
     set_access_cookie(response, request, access_token)
-
     return TokenResponse(access_token=access_token)
 
 
 @auth_router.get("/me", response_model=UserResponse)
-async def me(user: Annotated[User, Depends(get_current_user)],) -> UserResponse:
-    return UserResponse(
-        id=str(user.id),
-        username=user.username,
-        email=user.email,
-    )
+async def me(user: Annotated[User, Depends(get_current_user)]) -> UserResponse:
+    return UserResponse(id=str(user.id), username=user.username, email=user.email)
+
+
+@auth_router.post("/ws-ticket")
+async def issue_websocket_ticket(user: Annotated[User, Depends(get_current_user)]):
+    return {
+        "ticket": create_websocket_ticket(user.id, user.auth_version),
+        "expires_in": WEBSOCKET_TICKET_EXPIRE_SECONDS,
+    }
 
 
 @auth_router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
