@@ -3,47 +3,34 @@ import asyncio
 from logging.config import fileConfig
 
 from sqlalchemy import pool
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
 from app.dataProcessing.database import Base
 from app.dataProcessing import models
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
-config = context.config
-config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+config = context.config
+
+# Heroku may provide postgres:// or postgresql://. Alembic uses an
+# async SQLAlchemy engine, so normalize the URL to asyncpg just as
+# the application database module does.
+database_url = make_url(os.environ["DATABASE_URL"])
+if database_url.drivername in {"postgres", "postgresql"}:
+    database_url = database_url.set(drivername="postgresql+asyncpg")
+
+# set_main_option uses ConfigParser interpolation; escape percent signs
+# that may occur in URL credentials.
+config.set_main_option("sqlalchemy.url", database_url.render_as_string(hide_password=False).replace("%", "%%"))
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
-
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -64,11 +51,6 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    """In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -82,8 +64,6 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
-
     asyncio.run(run_async_migrations())
 
 
