@@ -10,6 +10,7 @@ ALLOWED_BROWSER_ORIGINS = (
     "http://127.0.0.1:3000",
     "https://localhost:8443",
     "https://127.0.0.1:8443",
+    "https://trivia-trap-web-c67da3f9e423.herokuapp.com",
 )
 
 
