@@ -8,20 +8,22 @@ import { Button } from "@/components/ui/button";
 import { apiFetch, apiMediaUrl } from "@/lib/api";
 import type { RoomInvitationNotification } from "@/types/notifications";
 
-function websocketUrl() {
-  const configured = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
-  if (configured) return `${configured.replace(/\/$/, "")}/invitations/ws`;
+const API_WS_BASE = "https://trivia-trap-api-3fe6377c53b3.herokuapp.com";
 
-  // Next.js rewrites proxy HTTP requests, not WebSocket upgrades. Connect to
-  // the FastAPI app directly in production; use the local API during development.
-  if (process.env.NODE_ENV === "production") {
-    return "wss://trivia-trap-api-3fe6377c53b3.herokuapp.com/invitations/ws";
-  }
-
+function websocketBaseUrl() {
+  if (process.env.NODE_ENV === "production") return "wss://trivia-trap-api-3fe6377c53b3.herokuapp.com";
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const isLoopback = ["localhost", "127.0.0.1"].includes(window.location.hostname);
   const host = isLoopback ? `${window.location.hostname}:8000` : window.location.host;
-  return `${protocol}//${host}/invitations/ws`;
+  return `${protocol}//${host}`;
+}
+
+async function requestWebSocketTicket(): Promise<string> {
+  const response = await apiFetch("/auth/ws-ticket", { method: "POST" });
+  if (!response.ok) throw new Error(`Could not authorize invitation WebSocket (${response.status})`);
+  const body = await response.json() as { ticket?: string };
+  if (!body.ticket) throw new Error("WebSocket ticket missing from response");
+  return body.ticket;
 }
 
 export function InvitationListener() {
@@ -33,35 +35,53 @@ export function InvitationListener() {
   useEffect(() => {
     let stopped = false;
     let socket: WebSocket | null = null;
-    const connect = () => {
+    const connect = async () => {
       if (stopped) return;
-      socket = new WebSocket(websocketUrl());
-      socket.onopen = () => socket?.send("ready");
-      socket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data) as { event?: string; data?: RoomInvitationNotification };
-          if (message.event === "ROOM_INVITATION" && message.data) {
-            setInvitation(message.data);
-            window.dispatchEvent(new CustomEvent("trivia:room-invitation", { detail: message.data }));
-          }
-        } catch { /* Ignore malformed server messages. */ }
-      };
-      socket.onclose = () => { if (!stopped) reconnect.current = window.setTimeout(connect, 3000); };
+      try {
+        const ticket = await requestWebSocketTicket();
+        if (stopped) return;
+        const url = new URL(`${websocketBaseUrl()}/invitations/ws`);
+        url.searchParams.set("ticket", ticket);
+        socket = new WebSocket(url);
+        socket.onopen = () => socket?.send("ready");
+        socket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data) as { event?: string; data?: RoomInvitationNotification };
+            if (message.event === "ROOM_INVITATION" && message.data) {
+              setInvitation(message.data);
+              window.dispatchEvent(new CustomEvent("trivia:room-invitation", { detail: message.data }));
+            }
+          } catch { /* Ignore malformed server messages. */ }
+        };
+        socket.onclose = () => {
+          if (!stopped) reconnect.current = window.setTimeout(() => { void connect(); }, 3000);
+        };
+        socket.onerror = () => socket?.close();
+      } catch {
+        if (!stopped) reconnect.current = window.setTimeout(() => { void connect(); }, 5000);
+      }
     };
-    connect();
-    return () => { stopped = true; if (reconnect.current) window.clearTimeout(reconnect.current); socket?.close(); };
+    void connect();
+    return () => {
+      stopped = true;
+      if (reconnect.current) window.clearTimeout(reconnect.current);
+      socket?.close();
+    };
   }, []);
 
   async function respond(action: "accept" | "decline") {
     if (!invitation) return;
     setBusy(true);
-    const response = await apiFetch(`/invitations/${encodeURIComponent(invitation.id)}/${action}`, { method: "POST" });
-    if (response.ok && action === "accept") {
-      const body = await response.json() as { room_code: string };
-      router.push(`/join?code=${encodeURIComponent(body.room_code)}`);
+    try {
+      const response = await apiFetch(`/invitations/${encodeURIComponent(invitation.id)}/${action}`, { method: "POST" });
+      if (response.ok && action === "accept") {
+        const body = await response.json() as { room_code: string };
+        router.push(`/join?code=${encodeURIComponent(body.room_code)}`);
+      }
+      if (response.ok) setInvitation(null);
+    } finally {
+      setBusy(false);
     }
-    if (response.ok) setInvitation(null);
-    setBusy(false);
   }
 
   if (!invitation) return null;
