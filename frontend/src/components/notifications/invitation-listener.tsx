@@ -11,12 +11,16 @@ import type { RoomInvitationNotification } from "@/types/notifications";
 function websocketUrl() {
   const configured = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
   if (configured) return `${configured.replace(/\/$/, "")}/invitations/ws`;
+
+  // Next.js rewrites proxy HTTP requests, not WebSocket upgrades. Connect to
+  // the FastAPI app directly in production; use the local API during development.
+  if (process.env.NODE_ENV === "production") {
+    return "wss://trivia-trap-api-3fe6377c53b3.herokuapp.com/invitations/ws";
+  }
+
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const isDevelopment = process.env.NODE_ENV === "development";
   const isLoopback = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-  const host = isDevelopment && isLoopback
-    ? `${window.location.hostname}:8000`
-    : window.location.host;
+  const host = isLoopback ? `${window.location.hostname}:8000` : window.location.host;
   return `${protocol}//${host}/invitations/ws`;
 }
 
