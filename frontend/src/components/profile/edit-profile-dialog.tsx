@@ -71,7 +71,7 @@ export function EditProfileDialog({
   const [uploading, setUploading] = useState(false);
   const [mode, setMode] = useState<"generated" | "upload">("generated");
   const generatedSeeds = Array.from(
-    { length: 20 },
+    { length: 10 },
     (_, index) => `trivia-trap:${user.id}:${index + 1}`,
   );
   const [selectedSeed, setSelectedSeed] = useState(generatedSeeds[0]);
