@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Heroku CLI
-        uses: heroku/setup-heroku@v0.0.1
+        run: curl https://cli-assets.heroku.com/install-ubuntu.sh | sh
 
       - name: Verify Heroku CLI
         run: heroku --version
