@@ -14,26 +14,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Heroku CLI
-        run: |
-          curl -fsSL https://cli-assets.heroku.com/install.sh | sh
-          heroku --version
-
-      - name: Verify Heroku app
-        env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-          HEROKU_APP: ${{ secrets.HEROKU_BACKEND_APP }}
-        run: heroku apps:info --app "$HEROKU_APP"
-
-      - name: Deploy backend
-        env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-          HEROKU_APP: ${{ secrets.HEROKU_BACKEND_APP }}
-        run: |
-          cd backend
-          heroku container:login
-          heroku git:remote --app "$HEROKU_APP"
-          git subtree push --prefix backend heroku main
+      - name: Deploy backend to Heroku
+        uses: akhileshns/heroku-deploy@v3.15.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: ${{ secrets.HEROKU_BACKEND_APP }}
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+          appdir: backend
+          dontautocreate: true
