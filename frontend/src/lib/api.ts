@@ -1,19 +1,18 @@
-const PRODUCTION_API_BASE_URL =
+const PRODUCTION_API_BASE_URL = "/api";
+const DEPLOYED_API_ORIGIN =
   "https://trivia-trap-api-3fe6377c53b3.herokuapp.com";
 
 const isLoopback = (hostname: string) => hostname === "localhost" || hostname === "127.0.0.1";
 
 function apiBaseUrl(): string {
   const configured = process.env.NEXT_PUBLIC_API_BASE_URL;
-  // Use the deployed FastAPI service by default in production. NEXT_PUBLIC_API_BASE_URL
-  // can still override this during the frontend build.
-  if (!configured && process.env.NODE_ENV === "production") {
+  const browserHost = typeof window === "undefined" ? undefined : window.location.hostname;
+
+  // In production, route API traffic through Next.js so auth cookies are first-party.
+  if (process.env.NODE_ENV === "production") {
     return PRODUCTION_API_BASE_URL;
   }
 
-  const browserHost = typeof window === "undefined" ? undefined : window.location.hostname;
-
-  // A login cookie belongs to a hostname, even when frontend and API use different ports.
   if (browserHost && isLoopback(browserHost)) {
     if (!configured) return `http://${browserHost}:8000`;
     const url = new URL(configured);
@@ -40,12 +39,16 @@ export function apiFetch(path: string, options: RequestInit = {}): Promise<Respo
   }
 
   const baseUrl = apiBaseUrl();
-  // UI callers may use the legacy same-origin /api prefix. The FastAPI service
-  // exposes routes directly, e.g. /auth/register, so strip /api for remote API calls.
-  const requestPath =
-    baseUrl !== "/api" && path.startsWith("/api/") ? path.slice(4) : path;
+  let requestUrl: string;
+  if (baseUrl === "/api") {
+    // Accept both /auth/me and legacy /api/auth/me callers without double-prefixing.
+    requestUrl = path.startsWith("/api/") ? path : `/api${path}`;
+  } else {
+    const requestPath = path.startsWith("/api/") ? path.slice(4) : path;
+    requestUrl = `${baseUrl}${requestPath}`;
+  }
 
-  return fetch(`${baseUrl}${requestPath}`, {
+  return fetch(requestUrl, {
     ...options,
     credentials: "include",
   });
