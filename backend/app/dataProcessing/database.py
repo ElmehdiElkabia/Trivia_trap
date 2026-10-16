@@ -7,6 +7,11 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
 )
 
+from sqlalchemy.orm import DeclarativeBase
+
+class Base(DeclarativeBase):
+    pass
+
 url = make_url(os.environ["DATABASE_URL"])
 
 if url.drivername in {"postgres", "postgresql"}:
