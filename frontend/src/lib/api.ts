@@ -1,6 +1,4 @@
 const PRODUCTION_API_BASE_URL = "/api";
-const DEPLOYED_API_ORIGIN =
-  "https://trivia-trap-api-3fe6377c53b3.herokuapp.com";
 
 const isLoopback = (hostname: string) => hostname === "localhost" || hostname === "127.0.0.1";
 
