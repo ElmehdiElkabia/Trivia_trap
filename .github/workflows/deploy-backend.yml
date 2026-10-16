@@ -16,14 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Heroku CLI
-        run: curl https://cli-assets.heroku.com/install.sh | sh
-
       - name: Deploy backend to Heroku
         uses: akhileshns/heroku-deploy@v3.15.15
         with:
           heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
-          heroku_app_name: ${{ secrets.HEROKU_BACKEND_APP }}
+          heroku_app_name: trivia-trap-api-3fe6377c53b3
           heroku_email: ${{ secrets.HEROKU_EMAIL }}
           appdir: backend
           dontautocreate: true
