@@ -24,10 +24,20 @@ jobs:
           curl https://cli-assets.heroku.com/install-ubuntu.sh | sh
           heroku --version
 
+      - name: Normalize backend Heroku app name
+        id: backend_app
+        shell: bash
+        run: |
+          app_name="$(echo "${{ secrets.HEROKU_BACKEND_APP }}" | tr '[:upper:]_' '[:lower:]-' | tr -cd 'a-z0-9-' | sed -E 's/^-+//; s/-+$//' | cut -c1-30)"
+          if [ -z "$app_name" ]; then
+            app_name="trivia-trap-backend"
+          fi
+          echo "name=$app_name" >> "$GITHUB_OUTPUT"
+
       - name: Deploy backend to Heroku
         uses: akhileshns/heroku-deploy@v3.14.15
         with:
           heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
-          heroku_app_name: ${{ secrets.HEROKU_BACKEND_APP }}
+          heroku_app_name: ${{ steps.backend_app.outputs.name }}
           heroku_email: ${{ secrets.HEROKU_EMAIL }}
           appdir: backend
