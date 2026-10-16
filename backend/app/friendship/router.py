@@ -13,7 +13,8 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 UserId = Annotated[int, Path(ge=1, le=2147483647)]
 
 
-@friends_router.get("/", response_model=list[FriendResponse])
+@friends_router.get("", response_model=list[FriendResponse])
+@friends_router.get("/", response_model=list[FriendResponse], include_in_schema=False)
 async def list_friends(current_user: CurrentUser, db: DbSession) -> list[FriendResponse]:
     return await get_friends(db, current_user.id)
 
