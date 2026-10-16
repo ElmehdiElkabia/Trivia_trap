@@ -33,7 +33,6 @@ jobs:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
           HEROKU_APP: ${{ secrets.HEROKU_BACKEND_APP }}
         run: |
-          cd backend
           heroku container:login
           heroku git:remote --app "$HEROKU_APP"
           git subtree push --prefix backend heroku main
