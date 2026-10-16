@@ -23,8 +23,6 @@ interface Handlers {
 const log = (message: string) => {
   if (process.env.NODE_ENV === "development") console.info(`[WS] ${message}`);
 };
-const API_WS_BASE = "https://trivia-trap-api-3fe6377c53b3.herokuapp.com";
-
 async function requestWebSocketTicket(): Promise<string> {
   const response = await apiFetch("/auth/ws-ticket", { method: "POST" });
   if (!response.ok) throw new Error(`Could not authorize WebSocket (${response.status})`);
