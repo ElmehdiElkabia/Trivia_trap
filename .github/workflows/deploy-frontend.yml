@@ -1,4 +1,3 @@
-
 name: Deploy Trivia Trap Frontend
 
 on:
@@ -17,6 +16,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install Heroku CLI
+        shell: bash
+        run: |
+          curl https://cli-assets.heroku.com/install-ubuntu.sh | sh
+          heroku --version
 
       - name: Deploy frontend to Heroku
         uses: akhileshns/heroku-deploy@v3.14.15
