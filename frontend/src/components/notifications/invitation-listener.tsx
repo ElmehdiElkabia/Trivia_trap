@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 import { apiFetch, apiMediaUrl } from "@/lib/api";
 import type { RoomInvitationNotification } from "@/types/notifications";
 
-const API_WS_BASE = "https://trivia-trap-api-3fe6377c53b3.herokuapp.com";
-
 function websocketBaseUrl() {
   if (process.env.NODE_ENV === "production") return "wss://trivia-trap-api-3fe6377c53b3.herokuapp.com";
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
