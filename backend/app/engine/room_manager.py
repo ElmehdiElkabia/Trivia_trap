@@ -24,6 +24,7 @@ class RoomManager():
         if not ws.state.user_id or not ws.state.user_name or not ws.state.db_user_id:
             raise GameError("INVALID_PAYLOAD", "Missing user_id or user_name in WebSocket state")
         join_room(self.rooms, ws, room_id, ws.state.user_id, ws.state.user_name, ws.state.db_user_id)
+        self.rooms[room_id].meta_data.last_activity_at = datetime.now(timezone.utc)
         mark_user_online(ws.state.db_user_id)
         await self.broadcast(lobby_update(self.rooms[room_id]), room_id, None)
         await sync_current_phase(self, room_id, ws.state.user_id)
@@ -66,8 +67,8 @@ class RoomManager():
             pass
         if player is not None:
             del self.rooms[room_id].players[player_id]
-        if room_id in self.rooms and not self.rooms[room_id].players:
-            del self.rooms[room_id]
+        if room_id in self.rooms:
+            self.rooms[room_id].meta_data.last_activity_at = datetime.now(timezone.utc)
 
     def mark_disconnected(self, player_id: str, room_id: str):
         """
@@ -78,9 +79,9 @@ class RoomManager():
         player = self.rooms.get(room_id).players.get(player_id)
         if player is not None:
             player.is_present = False
-            # if the last player in the room disconnected, we remove the room from the list of active rooms
-            if not any(p.is_present for p in self.rooms[room_id].players.values()):
-                del self.rooms[room_id]
+            # Keep the lobby alive briefly so a temporary WebSocket disconnect does not
+            # invalidate the room code while the player reconnects.
+            self.rooms[room_id].meta_data.last_activity_at = datetime.now(timezone.utc)
 
 manager = RoomManager()
 
@@ -148,7 +149,7 @@ async def get_room_status(
     room = manager.rooms.get(normalized)
     if room is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Room not found")
-    if len(room.players) >= room.meta_data.settings.max_players:
+    if sum(1 for player in room.players.values() if player.is_present) >= room.meta_data.settings.max_players:
         room_status = "full"
     elif room.meta_data.phase.current_state != RoomPhase.LOBBY:
         room_status = "in_progress"
@@ -167,20 +168,20 @@ def get_available_rooms(manager: RoomManager = manager) -> dict[str, Room]:
     stale_room_ids = [
         room_id
         for room_id, room in manager.rooms.items()
-        if not room.players
-        and room.meta_data.created_at <= stale_before
+        if not any(player.is_present for player in room.players.values())
+        and room.meta_data.last_activity_at <= stale_before
     ]
     for room_id in stale_room_ids:
         manager.rooms.pop(room_id, None)
 
     return {
         room_id: {
-            "player_count": len(room.players),
+            "player_count": sum(1 for player in room.players.values() if player.is_present),
             "settings": room.meta_data.settings.model_dump(),
         }
         for room_id, room in manager.rooms.items()
         if room.meta_data.phase.current_state == RoomPhase.LOBBY
-        and len(room.players) < room.meta_data.settings.max_players
+        and sum(1 for player in room.players.values() if player.is_present) < room.meta_data.settings.max_players
     }
 
 @router.websocket("/{room_id}")
