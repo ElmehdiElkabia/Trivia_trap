@@ -11,6 +11,7 @@ from .events import join_room, process_event, sync_current_phase
 from json import JSONDecodeError
 from presence import mark_user_online
 import asyncio
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter(prefix="/room", tags=["Room"])
 
@@ -158,12 +159,28 @@ async def get_room_status(
 def get_available_rooms(manager: RoomManager = manager) -> dict[str, Room]:
     """
         Get available rooms with their player count and settings.
+        Empty rooms that were never joined are removed after 10 minutes.
     """
+    now = datetime.now(timezone.utc)
+    stale_before = now - timedelta(minutes=10)
+
+    stale_room_ids = [
+        room_id
+        for room_id, room in manager.rooms.items()
+        if not room.players
+        and room.meta_data.created_at <= stale_before
+    ]
+    for room_id in stale_room_ids:
+        manager.rooms.pop(room_id, None)
+
     return {
         room_id: {
             "player_count": len(room.players),
             "settings": room.meta_data.settings.model_dump(),
-        } for room_id, room in manager.rooms.items()
+        }
+        for room_id, room in manager.rooms.items()
+        if room.meta_data.phase.current_state == RoomPhase.LOBBY
+        and len(room.players) < room.meta_data.settings.max_players
     }
 
 @router.websocket("/{room_id}")
