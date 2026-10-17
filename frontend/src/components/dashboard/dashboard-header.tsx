@@ -3,6 +3,7 @@ import { ArrowRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { UserData } from "@/types/userData";
 import { ProfileAvatar } from "@/components/profile/profile-avatar";
+import { createRoomAction } from "@/app/create-room/actions";
 
 export function DashboardHeader({ user }: { user: UserData }) {
   return (
@@ -19,9 +20,11 @@ export function DashboardHeader({ user }: { user: UserData }) {
           <Button asChild variant="outline" className="h-11 px-4 text-xs">
             <Link href="/join">Join room <ArrowRight className="size-4" /></Link>
           </Button>
-          <Button asChild className="h-11 px-4 text-xs">
-            <Link href="/create-room"><Plus className="size-4" /> Create room</Link>
-          </Button>
+          <form action={createRoomAction} className="min-w-0">
+            <Button type="submit" className="h-11 w-full px-4 text-xs">
+              <Plus className="size-4" /> Create room
+            </Button>
+          </form>
         </div>
         <Link href="/profile" aria-label={`Open ${user.username}'s profile`} className="relative rounded-full transition-transform hover:scale-105">
           <ProfileAvatar
