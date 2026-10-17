@@ -30,7 +30,8 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  reactCompiler: true,
+  // Temporarily disable the React Compiler to investigate production hydration error #418.
+  reactCompiler: false,
 };
 
 export default nextConfig;
