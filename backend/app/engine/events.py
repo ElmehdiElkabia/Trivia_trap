@@ -102,7 +102,8 @@ def join_room(rooms: dict, ws: WebSocket, room_id: str, player_id: str, name: st
     if rooms.get(room_id) is None:
         raise GameError("ROOM_NOT_FOUND", "This room could not be found. Check the room code and try again.")
     room = rooms[room_id]
-    if  player_id not in room.players and len(room.players) >= room.meta_data.settings.max_players:
+    active_players = sum(1 for player in room.players.values() if player.is_present)
+    if player_id not in room.players and active_players >= room.meta_data.settings.max_players:
         raise GameError("FULL_ROOM", "This room is full. Try joining another room.")
     if player_id not in room.players:
         if room.meta_data.phase.current_state != RoomPhase.LOBBY:
