@@ -48,6 +48,7 @@ class RoomMetaData(BaseModel, arbitrary_types_allowed=True):
     host_id: str
     settings: RoomSettings
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_activity_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     phase: Annotated[RoomPhase, Field(description="Access to the room phase state machine by phase.current_state")] = Field(default_factory=RoomPhase)
     timer_task: Annotated[asyncio.Task | None, Field(description="Timer task to trigger next phase when timeout")] = None
     phase_lock: asyncio.Lock = Field(default_factory=asyncio.Lock, exclude=True)
